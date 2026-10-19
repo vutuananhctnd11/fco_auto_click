@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.example.autoclicker.ui.MainController"
+      prefHeight="860.0" prefWidth="1200.0" spacing="8.0"
+      stylesheets="@../css/style.css">
+
+    <padding>
+        <Insets bottom="8.0" left="14.0" right="14.0" top="10.0"/>
+    </padding>
+
+    <!-- Top Brand Bar -->
+    <HBox alignment="CENTER_LEFT" spacing="12.0">
+        <!-- App Icon -->
+        <ImageView fx:id="appIconView" fitHeight="34.0" fitWidth="34.0" preserveRatio="true"/>
+
+        <!-- Title & Subtitle -->
+        <VBox>
+            <HBox alignment="CENTER_LEFT" spacing="8.0">
+                <Label fx:id="appTitleLabel" text="FCOAutoClick" styleClass="header-title"/>
+                <Label fx:id="authorBadgeLabel" text="Author: TunEngDev2003"
+                       style="-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #38bdf8; -fx-background-color: #0f2744; -fx-padding: 2px 8px; -fx-background-radius: 10px; -fx-border-color: #0284c7; -fx-border-radius: 10px;"/>
+            </HBox>
+            <Label fx:id="appSubtitleLabel" text="Conditional Automation Engine • Window-Relative Coordinates • Dynamic Image Branching" styleClass="header-subtitle"/>
+        </VBox>
+    </HBox>
+
+    <!-- Top ToolBar: Profile Files, Language, Window Target, Screen Target -->
+    <ToolBar style="-fx-background-color: #1e2128; -fx-background-radius: 8px; -fx-border-color: #2e3440; -fx-border-radius: 8px; -fx-padding: 6px 10px;">
+        <items>
+            <!-- Consolidated Options MenuButton -->
+            <MenuButton fx:id="optionsMenuButton" text="⚙ Tùy chọn" styleClass="menu-button">
+                <items>
+                    <MenuItem fx:id="openProfileMenuItem" text="📂 Mở cấu hình..." onAction="#handleLoadProfile"/>
+                    <MenuItem fx:id="saveProfileMenuItem" text="💾 Lưu cấu hình..." onAction="#handleSaveProfile"/>
+                    <SeparatorMenuItem/>
+                    <Menu fx:id="languageSubMenu" text="🌐 Ngôn ngữ (Language)">
+                        <items>
+                            <RadioMenuItem fx:id="langEnMenuItem" text="English" onAction="#handleSwitchLangEn"/>
+                            <RadioMenuItem fx:id="langViMenuItem" text="Tiếng Việt" onAction="#handleSwitchLangVi"/>
+                        </items>
+                    </Menu>
+                </items>
+            </MenuButton>
+
+            <Separator orientation="VERTICAL"/>
+
+            <!-- Window Target Selection -->
+            <HBox alignment="CENTER_LEFT" spacing="6.0">
+                <Label fx:id="toolbarWindowLabel" text="Window:" style="-fx-font-weight: bold; -fx-font-size: 12px;"/>
+                <ComboBox fx:id="windowComboBox" prefWidth="220.0" promptText="Select FCO Window..."/>
+                <Button fx:id="refreshWindowsBtn" text="Refresh" onAction="#handleRefreshWindows" style="-fx-font-size: 11px; -fx-padding: 4px 8px;"/>
+                <Label fx:id="windowStatusLabel" text="Target Window: NOT FOUND" style="-fx-font-size: 11px; -fx-text-fill: #f43f5e; -fx-font-weight: bold;"/>
+            </HBox>
+
+            <Separator orientation="VERTICAL"/>
+
+            <!-- Screen Selection -->
+            <HBox alignment="CENTER_LEFT" spacing="6.0">
+                <Label fx:id="toolbarScreenLabel" text="Screen:" style="-fx-font-weight: bold; -fx-font-size: 12px;"/>
+                <ComboBox fx:id="screenComboBox" prefWidth="150.0"/>
+            </HBox>
+        </items>
+    </ToolBar>
+
+    <!-- Main Control Panel (Start, Stop, Repeat Count, Status) on Main Screen -->
+    <HBox alignment="CENTER_LEFT" spacing="14.0" styleClass="card"
+          style="-fx-background-color: #181d26; -fx-padding: 10px 16px; -fx-border-color: #0284c7; -fx-border-width: 1.5px; -fx-border-radius: 8px; -fx-background-radius: 8px;">
+
+        <!-- Prominent START & STOP Buttons -->
+        <Button fx:id="startButton" text="START (F8)" onAction="#handleStart" styleClass="btn-start"
+                style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 8px 24px; -fx-cursor: hand;"/>
+        <Button fx:id="stopButton" text="STOP (F9)" onAction="#handleStop" styleClass="btn-stop" disable="true"
+                style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-padding: 8px 24px; -fx-cursor: hand;"/>
+                
+        <Separator orientation="VERTICAL"/>
+
+        <!-- Repeat Count Input -->
+        <HBox alignment="CENTER_LEFT" spacing="8.0">
+            <Label fx:id="repeatCountLabel" text="Số lần lặp (0 = Vô hạn):"
+                   style="-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: #f1f5f9;"/>
+            <TextField fx:id="repeatCountField" prefWidth="90.0" promptText="0" text="0"
+                       style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-alignment: CENTER;"/>
+        </HBox>
+
+        <Separator orientation="VERTICAL"/>
+
+        <!-- Execution Mode & Marker Options -->
+        <VBox alignment="CENTER_LEFT" spacing="3.0">
+            <CheckBox fx:id="backgroundClickCheckBox" text="Không chiếm chuột (Chạy ngầm)"
+                      style="-fx-text-fill: #38bdf8; -fx-font-size: 11px; -fx-font-weight: bold; -fx-cursor: hand;"/>
+            <CheckBox fx:id="showMarkerCheckBox" text="Hiện chấm vị trí khi chọn" selected="true"
+                      style="-fx-text-fill: #94a3b8; -fx-font-size: 11px; -fx-cursor: hand;"/>
+        </VBox>
+
+        <Pane HBox.hgrow="ALWAYS"/>
+
+        <!-- Real-time Engine Status & Loop Counter -->
+        <HBox alignment="CENTER_RIGHT" spacing="10.0">
+            <Label fx:id="engineStatusLabel" text="Status:" style="-fx-font-weight: bold; -fx-text-fill: #94a3b8; -fx-font-size: 13px;"/>
+            <Label fx:id="engineStatusBadge" text="IDLE" styleClass="badge, badge-idle" style="-fx-font-size: 12px; -fx-padding: 4px 12px;"/>
+            <Label fx:id="loopCounterLabel" text="Ready"
+                   style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #38bdf8; -fx-padding: 4px 10px; -fx-background-color: #0f172a; -fx-background-radius: 4px;"/>
+        </HBox>
+    </HBox>
+
+    <!-- Main Actions Workspace (3 Tabs) -->
+    <VBox VBox.vgrow="ALWAYS" spacing="6.0">
+        <TabPane fx:id="branchTabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+
+            <!-- 1. Initial Actions (Main Sequence) -->
+            <Tab fx:id="initialTab" text="Initial Actions (Main Sequence)">
+                <VBox spacing="8.0" styleClass="card" style="-fx-padding: 10px;">
+                    <HBox alignment="CENTER_LEFT" spacing="8.0">
+                        <Label fx:id="initialTabDesc"
+                               text="Executed sequentially on each loop. Add a CHECK_IMAGE action to branch to Branch A / B:"
+                               style="-fx-text-fill: #38bdf8; -fx-font-weight: bold;"/>
+                    </HBox>
+                    <ListView fx:id="initialListView" VBox.vgrow="ALWAYS"/>
+                    <HBox spacing="8.0" alignment="CENTER_LEFT">
+                        <Button fx:id="addInitialBtn" text="+ Add Action" onAction="#handleAddActionInitial" styleClass="btn-primary"/>
+                        <Button fx:id="addCheckImageBtn" text="+ Check Image" onAction="#handleAddCheckImageInitial"
+                                style="-fx-background-color: #8b5cf6; -fx-text-fill: white; -fx-font-weight: bold;"/>
+                        <Button fx:id="pickCoordInitialBtn" text="Pick Coord" onAction="#handlePickCoordInitial"/>
+                        <Button fx:id="editInitialBtn" text="Edit" onAction="#handleEditActionInitial"/>
+                        <Button fx:id="delInitialBtn" text="Delete" onAction="#handleDeleteActionInitial"/>
+                        <Button fx:id="upInitialBtn" text="Move Up" onAction="#handleMoveUpInitial"/>
+                        <Button fx:id="downInitialBtn" text="Move Down" onAction="#handleMoveDownInitial"/>
+                    </HBox>
+                </VBox>
+            </Tab>
+
+            <!-- 2. Branch A - MATCH -->
+            <Tab fx:id="branchATab" text="Branch A (Image MATCH)">
+                <VBox spacing="8.0" styleClass="card" style="-fx-padding: 10px;">
+                    <Label fx:id="branchATabDesc" text="Executed when a CHECK_IMAGE action in Initial Actions MATCHES threshold:" style="-fx-text-fill: #34d399; -fx-font-weight: bold;"/>
+                    <ListView fx:id="branchAListView" VBox.vgrow="ALWAYS"/>
+                    <HBox spacing="8.0" alignment="CENTER_LEFT">
+                        <Button fx:id="addBranchABtn" text="+ Add Action" onAction="#handleAddActionBranchA" styleClass="btn-primary"/>
+                        <Button fx:id="pickCoordBranchABtn" text="Pick Coord" onAction="#handlePickCoordBranchA"/>
+                        <Button fx:id="editBranchABtn" text="Edit" onAction="#handleEditActionBranchA"/>
+                        <Button fx:id="delBranchABtn" text="Delete" onAction="#handleDeleteActionBranchA"/>
+                        <Button fx:id="upBranchABtn" text="Move Up" onAction="#handleMoveUpBranchA"/>
+                        <Button fx:id="downBranchABtn" text="Move Down" onAction="#handleMoveDownBranchA"/>
+                    </HBox>
+                </VBox>
+            </Tab>
+
+            <!-- 3. Branch B - NOT MATCH -->
+            <Tab fx:id="branchBTab" text="Branch B (Image NOT MATCH)">
+                <VBox spacing="8.0" styleClass="card" style="-fx-padding: 10px;">
+                    <Label fx:id="branchBTabDesc" text="Executed when a CHECK_IMAGE action in Initial Actions DOES NOT match threshold:" style="-fx-text-fill: #fb923c; -fx-font-weight: bold;"/>
+                    <ListView fx:id="branchBListView" VBox.vgrow="ALWAYS"/>
+                    <HBox spacing="8.0" alignment="CENTER_LEFT">
+                        <Button fx:id="addBranchBBtn" text="+ Add Action" onAction="#handleAddActionBranchB" styleClass="btn-primary"/>
+                        <Button fx:id="pickCoordBranchBBtn" text="Pick Coord" onAction="#handlePickCoordBranchB"/>
+                        <Button fx:id="editBranchBBtn" text="Edit" onAction="#handleEditActionBranchB"/>
+                        <Button fx:id="delBranchBBtn" text="Delete" onAction="#handleDeleteActionBranchB"/>
+                        <Button fx:id="upBranchBBtn" text="Move Up" onAction="#handleMoveUpBranchB"/>
+                        <Button fx:id="downBranchBBtn" text="Move Down" onAction="#handleMoveDownBranchB"/>
+                    </HBox>
+                </VBox>
+            </Tab>
+        </TabPane>
+    </VBox>
+
+    <!-- Bottom Log Console & Footer Copyright -->
+    <VBox spacing="4.0" prefHeight="170.0" minHeight="120.0" styleClass="card" style="-fx-padding: 8px 10px;">
+        <HBox alignment="CENTER_LEFT" spacing="10.0">
+            <Label fx:id="logConsoleTitle" text="Activity Log Console" styleClass="card-title"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label text="Copyright © 2026 TunEngDev2003" style="-fx-font-size: 11px; -fx-text-fill: #64748b;"/>
+            <Button fx:id="clearLogBtn" text="Clear Log" onAction="#handleClearLog" style="-fx-font-size: 11px; -fx-padding: 2px 8px;"/>
+        </HBox>
+        <TextArea fx:id="logArea" editable="false" wrapText="false" styleClass="log-area" VBox.vgrow="ALWAYS"/>
+    </VBox>
+
+    <!-- Footer Copyright Bar -->
+    <HBox alignment="CENTER" spacing="10.0" style="-fx-padding: 2px 0 0 0;">
+        <Label fx:id="footerCopyrightLabel" text="FCOAutoClick v1.0.0 • Developed by TunEngDev2003 • All rights reserved"
+               style="-fx-font-size: 11px; -fx-text-fill: #64748b; -fx-font-weight: 500;"/>
+    </HBox>
+
+</VBox>

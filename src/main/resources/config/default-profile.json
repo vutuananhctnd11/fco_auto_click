@@ -1,0 +1,97 @@
+{
+  "targetScreen": 0,
+  "targetWindowTitle": "FCO",
+  "coordinateMode": "WINDOW_RELATIVE",
+  "repeatCount": 0,
+  "backgroundClick": false,
+  "initialActions": [
+    {
+      "type": "CLICK",
+      "x": 500,
+      "y": 400,
+      "width": 100,
+      "height": 100,
+      "keyName": "",
+      "delayMs": 300,
+      "coordinateMode": "WINDOW_RELATIVE",
+      "templatePath": "",
+      "threshold": 0.9
+    },
+    {
+      "type": "CHECK_IMAGE",
+      "x": 100,
+      "y": 200,
+      "width": 400,
+      "height": 300,
+      "keyName": "",
+      "delayMs": 0,
+      "coordinateMode": "WINDOW_RELATIVE",
+      "templatePath": "templates/sample-template.png",
+      "threshold": 0.9
+    }
+  ],
+  "branchA": [
+    {
+      "type": "CLICK",
+      "x": 1000,
+      "y": 700,
+      "width": 100,
+      "height": 100,
+      "keyName": "",
+      "delayMs": 500,
+      "coordinateMode": "WINDOW_RELATIVE",
+      "templatePath": "",
+      "threshold": 0.9
+    },
+    {
+      "type": "CLICK",
+      "x": 1100,
+      "y": 700,
+      "width": 100,
+      "height": 100,
+      "keyName": "",
+      "delayMs": 1000,
+      "coordinateMode": "WINDOW_RELATIVE",
+      "templatePath": "",
+      "threshold": 0.9
+    },
+    {
+      "type": "DOUBLE_CLICK",
+      "x": 1200,
+      "y": 700,
+      "width": 100,
+      "height": 100,
+      "keyName": "",
+      "delayMs": 2000,
+      "coordinateMode": "WINDOW_RELATIVE",
+      "templatePath": "",
+      "threshold": 0.9
+    }
+  ],
+  "branchB": [
+    {
+      "type": "CLICK",
+      "x": 900,
+      "y": 700,
+      "width": 100,
+      "height": 100,
+      "keyName": "",
+      "delayMs": 300,
+      "coordinateMode": "WINDOW_RELATIVE",
+      "templatePath": "",
+      "threshold": 0.9
+    },
+    {
+      "type": "KEY_PRESS",
+      "x": 0,
+      "y": 0,
+      "width": 100,
+      "height": 100,
+      "keyName": "ESC",
+      "delayMs": 500,
+      "coordinateMode": "WINDOW_RELATIVE",
+      "templatePath": "",
+      "threshold": 0.9
+    }
+  ]
+}
