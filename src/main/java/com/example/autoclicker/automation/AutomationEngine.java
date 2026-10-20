@@ -307,6 +307,8 @@ public class AutomationEngine {
                     Thread.sleep(100);
                 }
             }
+        } catch (StopAutomationException e) {
+            LoggerUtil.info("Automation finished: " + e.getMessage());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             LoggerUtil.info("Automation loop interrupted.");

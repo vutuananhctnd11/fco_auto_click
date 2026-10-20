@@ -88,8 +88,8 @@ public final class WindowsNativeInput {
                 vHeight = user32.GetSystemMetrics(1);  // SM_CYSCREEN
             }
             if (vWidth > 1 && vHeight > 1) {
-                int normX = (int) Math.round(((x - vLeft) * 65535.0) / (vWidth - 1));
-                int normY = (int) Math.round(((y - vTop) * 65535.0) / (vHeight - 1));
+                int normX = (int) Math.round(((double) (x - vLeft) * 65535.0) / (vWidth - 1));
+                int normY = (int) Math.round(((double) (y - vTop) * 65535.0) / (vHeight - 1));
                 user32.mouse_event(MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK, normX, normY, 0, ZERO_EXTRA_INFO);
             }
         } catch (Exception ignored) {
@@ -113,7 +113,7 @@ public final class WindowsNativeInput {
         double distance = Math.hypot(dx, dy);
 
         if (distance < 3) {
-            move(targetX, targetY);
+            user32.SetCursorPos(targetX, targetY);
             return;
         }
 
@@ -127,7 +127,6 @@ public final class WindowsNativeInput {
             int curX = (int) Math.round(startX + dx * t);
             int curY = (int) Math.round(startY + dy * t);
             user32.SetCursorPos(curX, curY);
-            sendAbsoluteMouseMove(curX, curY);
             sleep(stepDelay);
         }
 
@@ -140,6 +139,7 @@ public final class WindowsNativeInput {
             return;
         }
         smoothMove(x, y, 40);
+        user32.SetCursorPos(x, y); // Lock exact cursor position
         sleep(25); // Allow button hover state to activate in game frame loop
         user32.mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, ZERO_EXTRA_INFO);
         sleep(holdMs > 0 ? holdMs : 50);
@@ -157,6 +157,7 @@ public final class WindowsNativeInput {
             return;
         }
         smoothMove(x, y, 40);
+        user32.SetCursorPos(x, y);
         sleep(25);
         user32.mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, ZERO_EXTRA_INFO);
         sleep(holdMs > 0 ? holdMs : 50);
@@ -193,4 +194,3 @@ public final class WindowsNativeInput {
         }
     }
 }
-

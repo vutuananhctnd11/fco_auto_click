@@ -72,18 +72,41 @@ public class ImageDetector {
 
         try {
             Imgproc.matchTemplate(srcMat, tplMat, resultMat, Imgproc.TM_CCOEFF_NORMED);
-            Core.MinMaxLocResult mmr = Core.minMaxLoc(resultMat);
+            Core.MinMaxLocResult mmrColor = Core.minMaxLoc(resultMat);
 
-            double confidence = mmr.maxVal;
-            // Clean edge cases like NaN or negative values
-            if (Double.isNaN(confidence) || Double.isInfinite(confidence)) {
-                confidence = 0.0;
+            double confColor = mmrColor.maxVal;
+            if (Double.isNaN(confColor) || Double.isInfinite(confColor)) {
+                confColor = 0.0;
             }
+            Point ptColor = new Point((int) mmrColor.maxLoc.x, (int) mmrColor.maxLoc.y);
 
-            boolean isMatched = confidence >= threshold;
-            Point matchPoint = new Point((int) mmr.maxLoc.x, (int) mmr.maxLoc.y);
+            // Also perform Grayscale matching to eliminate font ClearType / antialiasing color bias on text/numbers
+            Mat srcGray = new Mat();
+            Mat tplGray = new Mat();
+            Mat resultGray = new Mat();
+            try {
+                Imgproc.cvtColor(srcMat, srcGray, Imgproc.COLOR_BGR2GRAY);
+                Imgproc.cvtColor(tplMat, tplGray, Imgproc.COLOR_BGR2GRAY);
+                Imgproc.matchTemplate(srcGray, tplGray, resultGray, Imgproc.TM_CCOEFF_NORMED);
+                Core.MinMaxLocResult mmrGray = Core.minMaxLoc(resultGray);
 
-            return new MatchResult(isMatched, confidence, matchPoint);
+                double confGray = mmrGray.maxVal;
+                if (Double.isNaN(confGray) || Double.isInfinite(confGray)) {
+                    confGray = 0.0;
+                }
+
+                double bestConfidence = Math.max(confColor, confGray);
+                Point bestPoint = (confGray > confColor)
+                        ? new Point((int) mmrGray.maxLoc.x, (int) mmrGray.maxLoc.y)
+                        : ptColor;
+
+                boolean isMatched = bestConfidence >= threshold;
+                return new MatchResult(isMatched, bestConfidence, bestPoint);
+            } finally {
+                srcGray.release();
+                tplGray.release();
+                resultGray.release();
+            }
         } finally {
             srcMat.release();
             tplMat.release();

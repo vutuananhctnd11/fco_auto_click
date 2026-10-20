@@ -11,6 +11,7 @@ public enum AutomationActionType {
     SCROLL,
     KEY_PRESS,
     WAIT,
-    CHECK_IMAGE
+    CHECK_IMAGE,
+    STOP
 }
 

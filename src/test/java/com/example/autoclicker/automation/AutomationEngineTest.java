@@ -243,4 +243,31 @@ class AutomationEngineTest {
         assertFalse(recordedStates.contains(AutomationState.EXECUTING_BRANCH_B));
         assertFalse(recordedStates.contains(AutomationState.EXECUTING_BRANCH_D));
     }
+
+    @Test
+    void testStopActionTerminatesScript() throws InterruptedException {
+        AutomationConfig config = new AutomationConfig();
+        config.setTargetScreen(0);
+        config.setRepeatCount(10); // set 10 loops, but STOP should end loop 1 immediately
+
+        AutomationAction action1 = new AutomationAction(AutomationActionType.WAIT, 0, 0, 10);
+        AutomationAction stopAction = new AutomationAction();
+        stopAction.setType(AutomationActionType.STOP);
+        AutomationAction actionNever = new AutomationAction(AutomationActionType.WAIT, 0, 0, 5000);
+
+        config.setInitialActions(List.of(action1, stopAction, actionNever));
+
+        CountDownLatch finishLatch = new CountDownLatch(1);
+        engine.addStateListener(state -> {
+            if (state == AutomationState.STOPPED) {
+                finishLatch.countDown();
+            }
+        });
+
+        engine.start(config);
+        boolean finished = finishLatch.await(3, TimeUnit.SECONDS);
+
+        assertTrue(finished);
+        assertFalse(engine.isRunning());
+    }
 }

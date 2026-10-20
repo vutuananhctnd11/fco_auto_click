@@ -57,7 +57,9 @@ if exist "target\dist\FCOAutoClick" (
     --main-class "com.example.autoclicker.Launcher" ^
     --icon "src/main/resources/icons/FCOAutoClick.ico" ^
     --dest "target/dist" ^
-    --java-options "-Dfile.encoding=UTF-8"
+    --java-options "-Dfile.encoding=UTF-8" ^
+    --java-options "-Dsun.java2d.dpiaware=true" ^
+    --java-options "-Dprism.allowhidpi=true"
 
 if errorlevel 1 (
     echo [ERROR] jpackage that bai!
@@ -66,9 +68,24 @@ if errorlevel 1 (
 )
 
 echo.
+echo [*] 4/4 Tao tap tin chay quyen Administrator (Run_As_Admin.bat)...
+(
+echo @echo off
+echo chcp 65001 ^>nul
+echo echo [*] Dang khoi dong FCOAutoClick voi quyen Administrator...
+echo cd /d "%%~dp0"
+echo powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process '.\FCOAutoClick.exe' -Verb RunAs"
+) > "target\dist\FCOAutoClick\Run_As_Admin.bat"
+
+echo.
 echo ========================================================
 echo [THANH CONG] File FCOAutoClick.exe da duoc tao tai:
 echo    target\dist\FCOAutoClick\FCOAutoClick.exe
+echo.
+echo [QUAN TRONG KHI CHOI FC ONLINE]:
+echo    Khi thao tac voi game FC Online, chay bang file:
+echo    target\dist\FCOAutoClick\Run_As_Admin.bat
+echo    (hoac chuot phai FCOAutoClick.exe -^> Run as administrator)
 echo ========================================================
 echo.
 pause

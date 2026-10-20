@@ -8,6 +8,7 @@ package com.example.autoclicker;
 public class Launcher {
 
     public static void main(String[] args) {
+        com.example.autoclicker.util.WindowsNativeUtil.initDpiAwareness();
         Main.main(args);
     }
 }

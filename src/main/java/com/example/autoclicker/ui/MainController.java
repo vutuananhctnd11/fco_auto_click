@@ -242,36 +242,21 @@ public class MainController {
         showMarkerCheckBox.selectedProperty().addListener((obs, oldVal, newVal) -> {
             if (!newVal) {
                 ActionTargetMarkerOverlay.hide();
+            } else {
+                showMarkerForCurrentTab();
             }
         });
 
-        // Setup click-outside handler to dismiss target marker and selection
+        // Hide target marker overlay when main window is minimized to taskbar
         Platform.runLater(() -> {
-            if (branchTabPane.getScene() != null) {
-                Scene scene = branchTabPane.getScene();
-                scene.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
-                    Node target = (Node) event.getTarget();
-                    boolean isInsideCell = false;
-                    while (target != null && target != scene.getRoot()) {
-                        if (target instanceof ListCell && ((ListCell<?>) target).getItem() != null) {
-                            isInsideCell = true;
-                            break;
-                        }
-                        target = target.getParent();
-                    }
-                    if (!isInsideCell) {
-                        clearAllActionSelections();
+            if (branchTabPane.getScene() != null && branchTabPane.getScene().getWindow() instanceof javafx.stage.Stage stage) {
+                stage.iconifiedProperty().addListener((obs, oldVal, isIconified) -> {
+                    if (isIconified) {
                         ActionTargetMarkerOverlay.hide();
+                    } else {
+                        showMarkerForCurrentTab();
                     }
                 });
-
-                if (scene.getWindow() != null) {
-                    scene.getWindow().focusedProperty().addListener((obs, oldVal, newVal) -> {
-                        if (!newVal) {
-                            ActionTargetMarkerOverlay.hide();
-                        }
-                    });
-                }
             }
         });
 
@@ -333,6 +318,12 @@ public class MainController {
         }));
 
         applyI18n();
+        boolean isElevated = windowManager.isElevated();
+        if (isElevated) {
+            LoggerUtil.info("Privilege Status: Elevated (Administrator). Full input access granted.");
+        } else {
+            LoggerUtil.warn("[LƯU Ý] FCOAutoClick chưa được chạy với quyền Administrator! Khi thao tác với game FC Online, hãy chạy ứng dụng bằng 'Run as administrator' để Windows không chặn chuột/phím.");
+        }
         LoggerUtil.info("FCOAutoClick v1.0.0 [TunEngDev2003] initialized. Ready.");
     }
 
@@ -554,23 +545,42 @@ public class MainController {
 
     private void setupSelectionMarker(ListView<AutomationAction> listView) {
         listView.getSelectionModel().selectedItemProperty().addListener((obs, oldAction, newAction) -> {
-            if (showMarkerCheckBox != null && !showMarkerCheckBox.isSelected()) {
-                ActionTargetMarkerOverlay.hide();
-                return;
-            }
-            if (newAction == null || newAction.getType() == AutomationActionType.WAIT) {
-                ActionTargetMarkerOverlay.hide();
-                return;
-            }
-            Rectangle windowBounds = getActiveWindowBounds();
-            int screenX = newAction.getX();
-            int screenY = newAction.getY();
-            if (newAction.getCoordinateMode() == CoordinateMode.WINDOW_RELATIVE && windowBounds != null) {
-                screenX = windowBounds.x + newAction.getX();
-                screenY = windowBounds.y + newAction.getY();
-            }
-            ActionTargetMarkerOverlay.show(screenX, screenY);
+            showMarkerForAction(newAction);
         });
+    }
+
+    public void showMarkerForAction(AutomationAction action) {
+        if (showMarkerCheckBox != null && !showMarkerCheckBox.isSelected()) {
+            ActionTargetMarkerOverlay.hide();
+            return;
+        }
+        if (action == null || action.getType() == AutomationActionType.WAIT 
+                || action.getType() == AutomationActionType.KEY_PRESS 
+                || action.getType() == AutomationActionType.STOP 
+                || action.getType() == AutomationActionType.CHECK_IMAGE) {
+            ActionTargetMarkerOverlay.hide();
+            return;
+        }
+        Rectangle windowBounds = getActiveWindowBounds();
+        int screenX = action.getX();
+        int screenY = action.getY();
+        if (action.getCoordinateMode() == CoordinateMode.WINDOW_RELATIVE && windowBounds != null) {
+            screenX = windowBounds.x + action.getX();
+            screenY = windowBounds.y + action.getY();
+        }
+        String label = action.getType().name() + " (" + action.getX() + ", " + action.getY() + ")";
+        ActionTargetMarkerOverlay.show(screenX, screenY, label);
+    }
+
+    private void showMarkerForCurrentTab() {
+        Tab currentTab = branchTabPane.getSelectionModel().getSelectedItem();
+        if (currentTab == initialTab) showMarkerForAction(initialListView.getSelectionModel().getSelectedItem());
+        else if (currentTab == branchATab) showMarkerForAction(branchAListView.getSelectionModel().getSelectedItem());
+        else if (currentTab == branchCTab) showMarkerForAction(branchCListView.getSelectionModel().getSelectedItem());
+        else if (currentTab == branchDTab) showMarkerForAction(branchDListView.getSelectionModel().getSelectedItem());
+        else if (currentTab == branchBTab) showMarkerForAction(branchBListView.getSelectionModel().getSelectedItem());
+        else if (currentTab == branchETab) showMarkerForAction(branchEListView.getSelectionModel().getSelectedItem());
+        else if (currentTab == branchFTab) showMarkerForAction(branchFListView.getSelectionModel().getSelectedItem());
     }
 
     private void populateScreens() {
@@ -604,6 +614,22 @@ public class MainController {
         if (window != null && windowManager.isWindowValid(window.getHwnd())) {
             windowStatusLabel.setText("Active: " + window.getTitle());
             windowStatusLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #34d399; -fx-font-weight: bold;");
+
+            // Automatically detect which screen contains this window
+            Rectangle bounds = windowManager.getWindowBounds(window.getHwnd());
+            if (bounds != null && screenComboBox != null && !screenComboBox.getItems().isEmpty()) {
+                int centerX = bounds.x + bounds.width / 2;
+                int centerY = bounds.y + bounds.height / 2;
+                for (ScreenInfo s : screenComboBox.getItems()) {
+                    if (s.getBounds().contains(centerX, centerY)) {
+                        if (screenComboBox.getValue() != s) {
+                            screenComboBox.getSelectionModel().select(s);
+                            LoggerUtil.info("Window \"" + window.getTitle() + "\" detected on " + s.getName() + " -> Auto-switched target screen.");
+                        }
+                        break;
+                    }
+                }
+            }
         } else {
             windowStatusLabel.setText(I18n.get("lbl.window_not_found"));
             windowStatusLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #f43f5e; -fx-font-weight: bold;");
@@ -735,7 +761,14 @@ public class MainController {
 
     @FXML
     public void handleStart() {
+        ActionTargetMarkerOverlay.hide();
         try {
+            if (!windowManager.isElevated()) {
+                LoggerUtil.warn("Cảnh báo: Ứng dụng chưa chạy quyền Administrator. Game FC Online có thể chặn phím/chuột do bảo mật Windows UIPI.");
+            }
+            if (backgroundClickCheckBox.isSelected()) {
+                LoggerUtil.warn("Lưu ý: Chế độ 'Chạy ngầm (PostMessage)' không hỗ trợ game DirectX/FCO. Nếu game không nhận chuột, vui lòng bỏ chọn Background Click.");
+            }
             AutomationConfig config = buildConfigFromForm();
             automationEngine.start(config);
         } catch (Exception e) {
@@ -770,39 +803,73 @@ public class MainController {
         });
     }
 
+    private void editSelectedAction(ListView<AutomationAction> listView, ObservableList<AutomationAction> actionList, Runnable afterChange) {
+        int idx = listView.getSelectionModel().getSelectedIndex();
+        if (idx >= 0 && idx < actionList.size()) {
+            new ActionDialog(actionList.get(idx), screenComboBox.getValue(), getActiveWindowBounds())
+                    .showAndWait().ifPresent(action -> {
+                        actionList.set(idx, action);
+                        if (afterChange != null) {
+                            afterChange.run();
+                        }
+                    });
+            showMarkerForAction(listView.getSelectionModel().getSelectedItem());
+        }
+    }
+
     @FXML
     private void handleEditActionInitial() {
-        int idx = initialListView.getSelectionModel().getSelectedIndex();
-        if (idx >= 0) {
-            new ActionDialog(initialActions.get(idx), screenComboBox.getValue(), getActiveWindowBounds())
-                    .showAndWait().ifPresent(action -> initialActions.set(idx, action));
+        editSelectedAction(initialListView, initialActions, null);
+    }
+
+    private void deleteSelectedAction(ListView<AutomationAction> listView, ObservableList<AutomationAction> actionList, Runnable afterChange) {
+        int idx = listView.getSelectionModel().getSelectedIndex();
+        if (idx >= 0 && idx < actionList.size()) {
+            actionList.remove(idx);
+            if (actionList.isEmpty()) {
+                ActionTargetMarkerOverlay.hide();
+            } else {
+                int nextIdx = Math.min(idx, actionList.size() - 1);
+                listView.getSelectionModel().select(nextIdx);
+                listView.scrollTo(nextIdx);
+            }
+            if (afterChange != null) {
+                afterChange.run();
+            }
+        }
+    }
+
+    private void moveUpSelectedAction(ListView<AutomationAction> listView, ObservableList<AutomationAction> actionList) {
+        int idx = listView.getSelectionModel().getSelectedIndex();
+        if (idx > 0 && idx < actionList.size()) {
+            Collections.swap(actionList, idx, idx - 1);
+            listView.getSelectionModel().select(idx - 1);
+            listView.scrollTo(idx - 1);
+        }
+    }
+
+    private void moveDownSelectedAction(ListView<AutomationAction> listView, ObservableList<AutomationAction> actionList) {
+        int idx = listView.getSelectionModel().getSelectedIndex();
+        if (idx >= 0 && idx < actionList.size() - 1) {
+            Collections.swap(actionList, idx, idx + 1);
+            listView.getSelectionModel().select(idx + 1);
+            listView.scrollTo(idx + 1);
         }
     }
 
     @FXML
     private void handleDeleteActionInitial() {
-        int idx = initialListView.getSelectionModel().getSelectedIndex();
-        if (idx >= 0) {
-            initialActions.remove(idx);
-        }
+        deleteSelectedAction(initialListView, initialActions, null);
     }
 
     @FXML
     private void handleMoveUpInitial() {
-        int idx = initialListView.getSelectionModel().getSelectedIndex();
-        if (idx > 0) {
-            Collections.swap(initialActions, idx, idx - 1);
-            initialListView.getSelectionModel().select(idx - 1);
-        }
+        moveUpSelectedAction(initialListView, initialActions);
     }
 
     @FXML
     private void handleMoveDownInitial() {
-        int idx = initialListView.getSelectionModel().getSelectedIndex();
-        if (idx >= 0 && idx < initialActions.size() - 1) {
-            Collections.swap(initialActions, idx, idx + 1);
-            initialListView.getSelectionModel().select(idx + 1);
-        }
+        moveDownSelectedAction(initialListView, initialActions);
     }
 
     // =========================================================================
@@ -833,41 +900,22 @@ public class MainController {
 
     @FXML
     private void handleEditActionBranchA() {
-        int idx = branchAListView.getSelectionModel().getSelectedIndex();
-        if (idx >= 0) {
-            new ActionDialog(branchAActions.get(idx), screenComboBox.getValue(), getActiveWindowBounds())
-                    .showAndWait().ifPresent(action -> {
-                        branchAActions.set(idx, action);
-                        updateDynamicBranchTabs();
-                    });
-        }
+        editSelectedAction(branchAListView, branchAActions, this::updateDynamicBranchTabs);
     }
 
     @FXML
     private void handleDeleteActionBranchA() {
-        int idx = branchAListView.getSelectionModel().getSelectedIndex();
-        if (idx >= 0) {
-            branchAActions.remove(idx);
-            updateDynamicBranchTabs();
-        }
+        deleteSelectedAction(branchAListView, branchAActions, this::updateDynamicBranchTabs);
     }
 
     @FXML
     private void handleMoveUpBranchA() {
-        int idx = branchAListView.getSelectionModel().getSelectedIndex();
-        if (idx > 0) {
-            Collections.swap(branchAActions, idx, idx - 1);
-            branchAListView.getSelectionModel().select(idx - 1);
-        }
+        moveUpSelectedAction(branchAListView, branchAActions);
     }
 
     @FXML
     private void handleMoveDownBranchA() {
-        int idx = branchAListView.getSelectionModel().getSelectedIndex();
-        if (idx >= 0 && idx < branchAActions.size() - 1) {
-            Collections.swap(branchAActions, idx, idx + 1);
-            branchAListView.getSelectionModel().select(idx + 1);
-        }
+        moveDownSelectedAction(branchAListView, branchAActions);
     }
 
     // =========================================================================
@@ -888,37 +936,22 @@ public class MainController {
 
     @FXML
     private void handleEditActionBranchC() {
-        int idx = branchCListView.getSelectionModel().getSelectedIndex();
-        if (idx >= 0) {
-            new ActionDialog(branchCActions.get(idx), screenComboBox.getValue(), getActiveWindowBounds())
-                    .showAndWait().ifPresent(action -> branchCActions.set(idx, action));
-        }
+        editSelectedAction(branchCListView, branchCActions, null);
     }
 
     @FXML
     private void handleDeleteActionBranchC() {
-        int idx = branchCListView.getSelectionModel().getSelectedIndex();
-        if (idx >= 0) {
-            branchCActions.remove(idx);
-        }
+        deleteSelectedAction(branchCListView, branchCActions, null);
     }
 
     @FXML
     private void handleMoveUpBranchC() {
-        int idx = branchCListView.getSelectionModel().getSelectedIndex();
-        if (idx > 0) {
-            Collections.swap(branchCActions, idx, idx - 1);
-            branchCListView.getSelectionModel().select(idx - 1);
-        }
+        moveUpSelectedAction(branchCListView, branchCActions);
     }
 
     @FXML
     private void handleMoveDownBranchC() {
-        int idx = branchCListView.getSelectionModel().getSelectedIndex();
-        if (idx >= 0 && idx < branchCActions.size() - 1) {
-            Collections.swap(branchCActions, idx, idx + 1);
-            branchCListView.getSelectionModel().select(idx + 1);
-        }
+        moveDownSelectedAction(branchCListView, branchCActions);
     }
 
     // =========================================================================
@@ -939,37 +972,22 @@ public class MainController {
 
     @FXML
     private void handleEditActionBranchD() {
-        int idx = branchDListView.getSelectionModel().getSelectedIndex();
-        if (idx >= 0) {
-            new ActionDialog(branchDActions.get(idx), screenComboBox.getValue(), getActiveWindowBounds())
-                    .showAndWait().ifPresent(action -> branchDActions.set(idx, action));
-        }
+        editSelectedAction(branchDListView, branchDActions, null);
     }
 
     @FXML
     private void handleDeleteActionBranchD() {
-        int idx = branchDListView.getSelectionModel().getSelectedIndex();
-        if (idx >= 0) {
-            branchDActions.remove(idx);
-        }
+        deleteSelectedAction(branchDListView, branchDActions, null);
     }
 
     @FXML
     private void handleMoveUpBranchD() {
-        int idx = branchDListView.getSelectionModel().getSelectedIndex();
-        if (idx > 0) {
-            Collections.swap(branchDActions, idx, idx - 1);
-            branchDListView.getSelectionModel().select(idx - 1);
-        }
+        moveUpSelectedAction(branchDListView, branchDActions);
     }
 
     @FXML
     private void handleMoveDownBranchD() {
-        int idx = branchDListView.getSelectionModel().getSelectedIndex();
-        if (idx >= 0 && idx < branchDActions.size() - 1) {
-            Collections.swap(branchDActions, idx, idx + 1);
-            branchDListView.getSelectionModel().select(idx + 1);
-        }
+        moveDownSelectedAction(branchDListView, branchDActions);
     }
 
     // =========================================================================
@@ -1000,41 +1018,22 @@ public class MainController {
 
     @FXML
     private void handleEditActionBranchB() {
-        int idx = branchBListView.getSelectionModel().getSelectedIndex();
-        if (idx >= 0) {
-            new ActionDialog(branchBActions.get(idx), screenComboBox.getValue(), getActiveWindowBounds())
-                    .showAndWait().ifPresent(action -> {
-                        branchBActions.set(idx, action);
-                        updateDynamicBranchTabs();
-                    });
-        }
+        editSelectedAction(branchBListView, branchBActions, this::updateDynamicBranchTabs);
     }
 
     @FXML
     private void handleDeleteActionBranchB() {
-        int idx = branchBListView.getSelectionModel().getSelectedIndex();
-        if (idx >= 0) {
-            branchBActions.remove(idx);
-            updateDynamicBranchTabs();
-        }
+        deleteSelectedAction(branchBListView, branchBActions, this::updateDynamicBranchTabs);
     }
 
     @FXML
     private void handleMoveUpBranchB() {
-        int idx = branchBListView.getSelectionModel().getSelectedIndex();
-        if (idx > 0) {
-            Collections.swap(branchBActions, idx, idx - 1);
-            branchBListView.getSelectionModel().select(idx - 1);
-        }
+        moveUpSelectedAction(branchBListView, branchBActions);
     }
 
     @FXML
     private void handleMoveDownBranchB() {
-        int idx = branchBListView.getSelectionModel().getSelectedIndex();
-        if (idx >= 0 && idx < branchBActions.size() - 1) {
-            Collections.swap(branchBActions, idx, idx + 1);
-            branchBListView.getSelectionModel().select(idx + 1);
-        }
+        moveDownSelectedAction(branchBListView, branchBActions);
     }
 
     // =========================================================================
@@ -1055,37 +1054,22 @@ public class MainController {
 
     @FXML
     private void handleEditActionBranchE() {
-        int idx = branchEListView.getSelectionModel().getSelectedIndex();
-        if (idx >= 0) {
-            new ActionDialog(branchEActions.get(idx), screenComboBox.getValue(), getActiveWindowBounds())
-                    .showAndWait().ifPresent(action -> branchEActions.set(idx, action));
-        }
+        editSelectedAction(branchEListView, branchEActions, null);
     }
 
     @FXML
     private void handleDeleteActionBranchE() {
-        int idx = branchEListView.getSelectionModel().getSelectedIndex();
-        if (idx >= 0) {
-            branchEActions.remove(idx);
-        }
+        deleteSelectedAction(branchEListView, branchEActions, null);
     }
 
     @FXML
     private void handleMoveUpBranchE() {
-        int idx = branchEListView.getSelectionModel().getSelectedIndex();
-        if (idx > 0) {
-            Collections.swap(branchEActions, idx, idx - 1);
-            branchEListView.getSelectionModel().select(idx - 1);
-        }
+        moveUpSelectedAction(branchEListView, branchEActions);
     }
 
     @FXML
     private void handleMoveDownBranchE() {
-        int idx = branchEListView.getSelectionModel().getSelectedIndex();
-        if (idx >= 0 && idx < branchEActions.size() - 1) {
-            Collections.swap(branchEActions, idx, idx + 1);
-            branchEListView.getSelectionModel().select(idx + 1);
-        }
+        moveDownSelectedAction(branchEListView, branchEActions);
     }
 
     // =========================================================================
@@ -1106,37 +1090,22 @@ public class MainController {
 
     @FXML
     private void handleEditActionBranchF() {
-        int idx = branchFListView.getSelectionModel().getSelectedIndex();
-        if (idx >= 0) {
-            new ActionDialog(branchFActions.get(idx), screenComboBox.getValue(), getActiveWindowBounds())
-                    .showAndWait().ifPresent(action -> branchFActions.set(idx, action));
-        }
+        editSelectedAction(branchFListView, branchFActions, null);
     }
 
     @FXML
     private void handleDeleteActionBranchF() {
-        int idx = branchFListView.getSelectionModel().getSelectedIndex();
-        if (idx >= 0) {
-            branchFActions.remove(idx);
-        }
+        deleteSelectedAction(branchFListView, branchFActions, null);
     }
 
     @FXML
     private void handleMoveUpBranchF() {
-        int idx = branchFListView.getSelectionModel().getSelectedIndex();
-        if (idx > 0) {
-            Collections.swap(branchFActions, idx, idx - 1);
-            branchFListView.getSelectionModel().select(idx - 1);
-        }
+        moveUpSelectedAction(branchFListView, branchFActions);
     }
 
     @FXML
     private void handleMoveDownBranchF() {
-        int idx = branchFListView.getSelectionModel().getSelectedIndex();
-        if (idx >= 0 && idx < branchFActions.size() - 1) {
-            Collections.swap(branchFActions, idx, idx + 1);
-            branchFListView.getSelectionModel().select(idx + 1);
-        }
+        moveDownSelectedAction(branchFListView, branchFActions);
     }
 
     private AutomationAction createDefaultCheckImage() {

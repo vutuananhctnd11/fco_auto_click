@@ -3,6 +3,9 @@ package com.example.autoclicker.ui;
 import com.example.autoclicker.automation.CoordinateMode;
 import com.example.autoclicker.screen.CaptureRegion;
 import com.example.autoclicker.screen.ScreenInfo;
+import com.example.autoclicker.util.I18n;
+import com.example.autoclicker.util.WindowsNativeUtil;
+import com.sun.jna.platform.win32.WinDef;
 import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -12,122 +15,146 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 /**
- * Transparent fullscreen overlay allowing the user to click and drag to select a capture region.
- * Supports Window-relative and Screen-relative coordinate translations.
+ * Transparent fullscreen multi-monitor overlay allowing the user to click and drag to select
+ * an image capture region with Win32 physical precision.
  */
 public class RegionSelectionOverlay {
 
-    public static void show(ScreenInfo screen, java.awt.Rectangle windowBounds, CoordinateMode mode, Consumer<CaptureRegion> onSelected) {
-        if (screen == null) {
-            return;
-        }
-
+    public static void show(ScreenInfo targetScreen, java.awt.Rectangle windowBounds, CoordinateMode mode, Consumer<CaptureRegion> onSelected) {
         Platform.runLater(() -> {
-            Stage overlayStage = new Stage(StageStyle.TRANSPARENT);
-            overlayStage.setAlwaysOnTop(true);
+            List<Screen> screens = Screen.getScreens();
+            List<Stage> overlayStages = new ArrayList<>();
+            AtomicBoolean selected = new AtomicBoolean(false);
 
-            // Position stage over the chosen monitor
-            int stageX = screen.getX();
-            int stageY = screen.getY();
-            int stageW = screen.getWidth();
-            int stageH = screen.getHeight();
-
-            overlayStage.setX(stageX);
-            overlayStage.setY(stageY);
-            overlayStage.setWidth(stageW);
-            overlayStage.setHeight(stageH);
-
-            Pane root = new Pane();
-            root.setStyle("-fx-background-color: rgba(0, 0, 0, 0.40); -fx-cursor: crosshair;");
+            Runnable closeAll = () -> {
+                for (Stage st : overlayStages) {
+                    try {
+                        st.close();
+                    } catch (Exception ignored) {
+                    }
+                }
+                overlayStages.clear();
+            };
 
             String modeText = (mode == CoordinateMode.WINDOW_RELATIVE && windowBounds != null)
                     ? "WINDOW_RELATIVE (" + windowBounds.width + "x" + windowBounds.height + ")"
-                    : "ABSOLUTE_SCREEN (" + screen.getName() + ")";
+                    : "ABSOLUTE_SCREEN";
 
-            // Instruction prompt in center
-            Label prompt = new Label(com.example.autoclicker.util.I18n.format("overlay.region_prompt", modeText));
-            prompt.setStyle("-fx-text-fill: white; -fx-font-size: 15px; -fx-font-weight: bold; -fx-background-color: rgba(15, 23, 42, 0.9); -fx-padding: 8px 18px; -fx-background-radius: 6px; -fx-border-color: #38bdf8; -fx-border-radius: 6px;");
-            VBox promptBox = new VBox(prompt);
-            promptBox.setAlignment(Pos.CENTER);
-            promptBox.setLayoutX((stageW - 550) / 2.0);
-            promptBox.setLayoutY(40);
-            root.getChildren().add(promptBox);
+            for (Screen fxScreen : screens) {
+                Stage stage = new Stage(StageStyle.TRANSPARENT);
+                stage.setAlwaysOnTop(true);
 
-            // Selection rectangle
-            Rectangle rect = new Rectangle(0, 0, 0, 0);
-            rect.setFill(Color.rgb(0, 162, 255, 0.25));
-            rect.setStroke(Color.rgb(0, 220, 255, 0.95));
-            rect.setStrokeWidth(2);
-            rect.setVisible(false);
-            root.getChildren().add(rect);
+                double stageX = fxScreen.getBounds().getMinX();
+                double stageY = fxScreen.getBounds().getMinY();
+                double stageW = fxScreen.getBounds().getWidth();
+                double stageH = fxScreen.getBounds().getHeight();
 
-            final double[] startPoint = new double[2];
+                stage.setX(stageX);
+                stage.setY(stageY);
+                stage.setWidth(stageW);
+                stage.setHeight(stageH);
 
-            root.setOnMousePressed(e -> {
-                startPoint[0] = e.getX();
-                startPoint[1] = e.getY();
-                rect.setX(e.getX());
-                rect.setY(e.getY());
-                rect.setWidth(0);
-                rect.setHeight(0);
-                rect.setVisible(true);
-            });
+                Pane root = new Pane();
+                root.setStyle("-fx-background-color: rgba(0, 0, 0, 0.35); -fx-cursor: crosshair;");
 
-            root.setOnMouseDragged(e -> {
-                double currentX = e.getX();
-                double currentY = e.getY();
+                Label prompt = new Label(I18n.format("overlay.region_prompt", modeText) + " \u2022 [Kéo thả chuột để chọn | ESC để hủy]");
+                prompt.setStyle("-fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: bold; -fx-background-color: rgba(15, 23, 42, 0.92); -fx-padding: 8px 18px; -fx-background-radius: 6px; -fx-border-color: #38bdf8; -fx-border-radius: 6px;");
+                VBox promptBox = new VBox(prompt);
+                promptBox.setAlignment(Pos.CENTER);
+                promptBox.setLayoutX(Math.max(20, (stageW - 650) / 2.0));
+                promptBox.setLayoutY(30);
+                root.getChildren().add(promptBox);
 
-                double minX = Math.min(startPoint[0], currentX);
-                double minY = Math.min(startPoint[1], currentY);
-                double width = Math.abs(currentX - startPoint[0]);
-                double height = Math.abs(currentY - startPoint[1]);
+                // Selection rectangle visual element
+                Rectangle rect = new Rectangle(0, 0, 0, 0);
+                rect.setFill(Color.rgb(0, 162, 255, 0.25));
+                rect.setStroke(Color.rgb(0, 220, 255, 0.95));
+                rect.setStrokeWidth(2);
+                rect.setVisible(false);
+                root.getChildren().add(rect);
 
-                rect.setX(minX);
-                rect.setY(minY);
-                rect.setWidth(width);
-                rect.setHeight(height);
-            });
+                final double[] startLocal = new double[2];
+                final WinDef.POINT[] startPhysical = new WinDef.POINT[1];
 
-            root.setOnMouseReleased(e -> {
-                int screenRelX = (int) Math.round(rect.getX());
-                int screenRelY = (int) Math.round(rect.getY());
-                int rw = (int) Math.round(rect.getWidth());
-                int rh = (int) Math.round(rect.getHeight());
+                root.setOnMousePressed(e -> {
+                    startLocal[0] = e.getX();
+                    startLocal[1] = e.getY();
+                    startPhysical[0] = WindowsNativeUtil.getCursorPos();
 
-                int globalX = stageX + screenRelX;
-                int globalY = stageY + screenRelY;
+                    rect.setX(e.getX());
+                    rect.setY(e.getY());
+                    rect.setWidth(0);
+                    rect.setHeight(0);
+                    rect.setVisible(true);
+                });
 
-                int finalX = screenRelX;
-                int finalY = screenRelY;
+                root.setOnMouseDragged(e -> {
+                    double currentX = e.getX();
+                    double currentY = e.getY();
 
-                if (mode == CoordinateMode.WINDOW_RELATIVE && windowBounds != null) {
-                    finalX = globalX - windowBounds.x;
-                    finalY = globalY - windowBounds.y;
-                }
+                    double minX = Math.min(startLocal[0], currentX);
+                    double minY = Math.min(startLocal[1], currentY);
+                    double width = Math.abs(currentX - startLocal[0]);
+                    double height = Math.abs(currentY - startLocal[1]);
 
-                overlayStage.close();
+                    rect.setX(minX);
+                    rect.setY(minY);
+                    rect.setWidth(width);
+                    rect.setHeight(height);
+                });
 
-                if (rw > 5 && rh > 5) {
-                    onSelected.accept(new CaptureRegion(finalX, finalY, rw, rh, mode));
-                }
-            });
+                root.setOnMouseReleased(e -> {
+                    WinDef.POINT endPhysical = WindowsNativeUtil.getCursorPos();
+                    if (startPhysical[0] == null) {
+                        startPhysical[0] = endPhysical;
+                    }
 
-            Scene scene = new Scene(root, stageW, stageH);
-            scene.setFill(Color.TRANSPARENT);
-            scene.setOnKeyPressed(e -> {
-                if (e.getCode() == KeyCode.ESCAPE) {
-                    overlayStage.close();
-                }
-            });
+                    int minPhysX = Math.min(startPhysical[0].x, endPhysical.x);
+                    int minPhysY = Math.min(startPhysical[0].y, endPhysical.y);
+                    int rw = Math.abs(endPhysical.x - startPhysical[0].x);
+                    int rh = Math.abs(endPhysical.y - startPhysical[0].y);
 
-            overlayStage.setScene(scene);
-            overlayStage.show();
+                    int finalX = minPhysX;
+                    int finalY = minPhysY;
+
+                    if (mode == CoordinateMode.WINDOW_RELATIVE && windowBounds != null) {
+                        finalX = minPhysX - windowBounds.x;
+                        finalY = minPhysY - windowBounds.y;
+                    }
+
+                    if (selected.compareAndSet(false, true)) {
+                        closeAll.run();
+                        if (rw > 5 && rh > 5 && onSelected != null) {
+                            onSelected.accept(new CaptureRegion(finalX, finalY, rw, rh, mode));
+                        }
+                    }
+                });
+
+                Scene scene = new Scene(root, stageW, stageH);
+                scene.setFill(Color.TRANSPARENT);
+                scene.setOnKeyPressed(e -> {
+                    if (e.getCode() == KeyCode.ESCAPE) {
+                        closeAll.run();
+                    }
+                });
+
+                stage.setScene(scene);
+                overlayStages.add(stage);
+            }
+
+            for (Stage st : overlayStages) {
+                st.show();
+            }
         });
     }
 

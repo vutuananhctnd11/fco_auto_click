@@ -114,15 +114,20 @@ public class ActionListCell extends ListCell<AutomationAction> {
             waitBadge.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #cbd5e1; " +
                     "-fx-background-color: #1e293b; -fx-padding: 2px 8px; -fx-background-radius: 4px;");
             targetBox.getChildren().add(waitBadge);
+        } else if (action.getType() == AutomationActionType.STOP) {
+            Label stopBadge = new Label(I18n.get("cell.stop"));
+            stopBadge.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #fca5a5; " +
+                    "-fx-background-color: #450a0a; -fx-padding: 2px 8px; -fx-background-radius: 4px;");
+            targetBox.getChildren().add(stopBadge);
         }
 
         // 4. Spacer
         Pane spacer = new Pane();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        // 5. Post Delay Pill (for actions other than WAIT)
+        // 5. Post Delay Pill (for actions other than WAIT and STOP)
         Label delayPill = null;
-        if (action.getType() != AutomationActionType.WAIT && action.getDelayMs() > 0) {
+        if (action.getType() != AutomationActionType.WAIT && action.getType() != AutomationActionType.STOP && action.getDelayMs() > 0) {
             delayPill = new Label(I18n.get("cell.delay", action.getDelayMs()));
             delayPill.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8; " +
                     "-fx-background-color: #1e293b; -fx-padding: 3px 8px; -fx-background-radius: 4px;");
@@ -148,6 +153,7 @@ public class ActionListCell extends ListCell<AutomationAction> {
             case CHECK_IMAGE -> I18n.get("badge.action.check_image");
             case KEY_PRESS -> I18n.get("badge.action.key_press");
             case WAIT -> I18n.get("badge.action.wait");
+            case STOP -> I18n.get("badge.action.stop");
         };
     }
 
@@ -163,6 +169,7 @@ public class ActionListCell extends ListCell<AutomationAction> {
             case CHECK_IMAGE -> base + "-fx-text-fill: #f43f5e; -fx-background-color: #4c0519; -fx-border-color: #be123c; -fx-border-radius: 6px;";
             case KEY_PRESS -> base + "-fx-text-fill: #f59e0b; -fx-background-color: #451a03; -fx-border-color: #d97706; -fx-border-radius: 6px;";
             case WAIT -> base + "-fx-text-fill: #cbd5e1; -fx-background-color: #334155; -fx-border-color: #475569; -fx-border-radius: 6px;";
+            case STOP -> base + "-fx-text-fill: #ffffff; -fx-background-color: #dc2626; -fx-border-color: #ef4444; -fx-border-radius: 6px;";
             default -> base + "-fx-text-fill: #ffffff; -fx-background-color: #1e293b;";
         };
     }

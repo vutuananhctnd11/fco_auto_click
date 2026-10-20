@@ -24,8 +24,11 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
 
+import javax.imageio.ImageIO;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -54,6 +57,9 @@ public class ActionDialog extends Dialog<AutomationAction> {
     private final Button browseTemplateBtn;
     private final ImageView templatePreviewView;
     private final Label templateDimLabel;
+    private final ImageView capturedPreviewView;
+    private final Label capturedDimLabel;
+    private final VBox capturedPreviewBox;
     private final Slider thresholdSlider;
     private final TextField thresholdField;
     private final Button testImageBtn;
@@ -164,11 +170,19 @@ public class ActionDialog extends Dialog<AutomationAction> {
         browseTemplateBtn.setStyle(btnSecondaryStyle);
 
         templatePreviewView = new ImageView();
-        templatePreviewView.setFitHeight(40);
-        templatePreviewView.setFitWidth(100);
+        templatePreviewView.setFitHeight(45);
+        templatePreviewView.setFitWidth(120);
         templatePreviewView.setPreserveRatio(true);
         templateDimLabel = new Label(I18n.get("lbl.no_template"));
         templateDimLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
+
+        capturedPreviewView = new ImageView();
+        capturedPreviewView.setFitHeight(45);
+        capturedPreviewView.setFitWidth(120);
+        capturedPreviewView.setPreserveRatio(true);
+        capturedDimLabel = new Label(I18n.get("lbl.no_captured"));
+        capturedDimLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
+        capturedPreviewBox = new VBox(4);
 
         thresholdSlider = new Slider(0.10, 1.0, 0.90);
         thresholdSlider.setBlockIncrement(0.05);
@@ -227,6 +241,7 @@ public class ActionDialog extends Dialog<AutomationAction> {
             CoordinatePickerOverlay.pick(screen, windowBounds, modeCombo.getValue(), pt -> {
                 xField.setText(String.valueOf(pt.x));
                 yField.setText(String.valueOf(pt.y));
+                updateTargetMarker(screen, windowBounds);
             });
         });
 
@@ -238,11 +253,21 @@ public class ActionDialog extends Dialog<AutomationAction> {
                 widthField.setText(String.valueOf(reg.getWidth()));
                 heightField.setText(String.valueOf(reg.getHeight()));
                 modeCombo.setValue(reg.getCoordinateMode());
+                updateTargetMarker(screen, windowBounds);
             });
         });
 
+        // Real-time target marker tracking while typing coordinates or changing action type/mode
+        xField.textProperty().addListener((obs, oldVal, newVal) -> updateTargetMarker(screen, windowBounds));
+        yField.textProperty().addListener((obs, oldVal, newVal) -> updateTargetMarker(screen, windowBounds));
+        modeCombo.valueProperty().addListener((obs, oldVal, newVal) -> updateTargetMarker(screen, windowBounds));
+        typeCombo.valueProperty().addListener((obs, oldVal, newVal) -> updateTargetMarker(screen, windowBounds));
+        setOnShown(e -> updateTargetMarker(screen, windowBounds));
+        setOnHidden(e -> ActionTargetMarkerOverlay.hide());
+
         // Test Image
         testImageBtn.setOnAction(e -> {
+            ActionTargetMarkerOverlay.hide();
             String path = templatePathField.getText().trim();
             if (path.isEmpty()) return;
             try {
@@ -256,6 +281,13 @@ public class ActionDialog extends Dialog<AutomationAction> {
                 ImageDetector id = new ImageDetector();
                 BufferedImage tpl = id.loadTemplate(path);
                 BufferedImage shot = ss.capture(screen, region, windowBounds);
+
+                if (shot != null) {
+                    Image fxShot = convertToFxImage(shot);
+                    capturedPreviewView.setImage(fxShot);
+                    capturedDimLabel.setText(String.format("%dx%d px", shot.getWidth(), shot.getHeight()));
+                }
+
                 MatchResult res = id.match(shot, tpl, thresholdSlider.getValue());
 
                 testConfidenceLabel.setText(MessageFormat.format(I18n.get("lbl.confidence"),
@@ -263,9 +295,11 @@ public class ActionDialog extends Dialog<AutomationAction> {
                 if (res.isMatched()) {
                     testResultBadge.setText(I18n.get("lbl.match"));
                     testResultBadge.setStyle("-fx-padding: 3px 8px; -fx-background-radius: 4px; -fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;");
+                    capturedPreviewBox.setStyle("-fx-background-color: #0f172a; -fx-padding: 8px; -fx-background-radius: 6px; -fx-border-color: #10b981; -fx-border-width: 2px; -fx-border-radius: 6px; -fx-alignment: center;");
                 } else {
                     testResultBadge.setText(I18n.get("lbl.not_match"));
                     testResultBadge.setStyle("-fx-padding: 3px 8px; -fx-background-radius: 4px; -fx-background-color: #f97316; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;");
+                    capturedPreviewBox.setStyle("-fx-background-color: #0f172a; -fx-padding: 8px; -fx-background-radius: 6px; -fx-border-color: #f97316; -fx-border-width: 2px; -fx-border-radius: 6px; -fx-alignment: center;");
                 }
             } catch (Exception ex) {
                 LoggerUtil.error("Test image failed in dialog: " + ex.getMessage());
@@ -312,19 +346,33 @@ public class ActionDialog extends Dialog<AutomationAction> {
         grid.add(scrollBox, 1, 6);
 
         grid.add(tplLbl, 0, 7);
-        VBox tplBox = new VBox(6,
-                new HBox(6, templatePathField, browseTemplateBtn),
-                new HBox(8, templatePreviewView, templateDimLabel));
-        grid.add(tplBox, 1, 7);
+        HBox tplFileBox = new HBox(6, templatePathField, browseTemplateBtn);
+        grid.add(tplFileBox, 1, 7);
 
         grid.add(threshLbl, 0, 8);
         HBox threshBox = new HBox(8, thresholdSlider, thresholdField);
         grid.add(threshBox, 1, 8);
 
         Label testLbl = createStyledLabel(I18n.get("dialog.action.test_match"));
-        HBox testBox = new HBox(8, testImageBtn, testResultBadge, testConfidenceLabel);
+        HBox testActionBox = new HBox(8, testImageBtn, testResultBadge, testConfidenceLabel);
+
+        Label tplTitle = new Label(I18n.get("lbl.template_image"));
+        tplTitle.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8; -fx-font-weight: bold;");
+        VBox tplPreviewBox = new VBox(4, tplTitle, templatePreviewView, templateDimLabel);
+        tplPreviewBox.setStyle("-fx-background-color: #0f172a; -fx-padding: 8px; -fx-background-radius: 6px; -fx-border-color: #334155; -fx-border-radius: 6px; -fx-alignment: center;");
+        tplPreviewBox.setPrefWidth(160);
+
+        Label capturedTitle = new Label(I18n.get("lbl.captured_preview"));
+        capturedTitle.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8; -fx-font-weight: bold;");
+        capturedPreviewBox.getChildren().setAll(capturedTitle, capturedPreviewView, capturedDimLabel);
+        capturedPreviewBox.setStyle("-fx-background-color: #0f172a; -fx-padding: 8px; -fx-background-radius: 6px; -fx-border-color: #334155; -fx-border-radius: 6px; -fx-alignment: center;");
+        capturedPreviewBox.setPrefWidth(160);
+
+        HBox compareBox = new HBox(12, tplPreviewBox, capturedPreviewBox);
+        VBox testSection = new VBox(8, testActionBox, compareBox);
+
         grid.add(testLbl, 0, 9);
-        grid.add(testBox, 1, 9);
+        grid.add(testSection, 1, 9);
 
         grid.add(keyLbl, 0, 10);
         grid.add(keyField, 1, 10);
@@ -366,8 +414,8 @@ public class ActionDialog extends Dialog<AutomationAction> {
 
             tplLbl.setVisible(isCheckImage);
             tplLbl.setManaged(isCheckImage);
-            tplBox.setVisible(isCheckImage);
-            tplBox.setManaged(isCheckImage);
+            tplFileBox.setVisible(isCheckImage);
+            tplFileBox.setManaged(isCheckImage);
 
             threshLbl.setVisible(isCheckImage);
             threshLbl.setManaged(isCheckImage);
@@ -376,8 +424,8 @@ public class ActionDialog extends Dialog<AutomationAction> {
 
             testLbl.setVisible(isCheckImage);
             testLbl.setManaged(isCheckImage);
-            testBox.setVisible(isCheckImage);
-            testBox.setManaged(isCheckImage);
+            testSection.setVisible(isCheckImage);
+            testSection.setManaged(isCheckImage);
 
             keyLbl.setVisible(isKey);
             keyLbl.setManaged(isKey);
@@ -489,6 +537,48 @@ public class ActionDialog extends Dialog<AutomationAction> {
         } catch (Exception e) {
             templatePreviewView.setImage(null);
             templateDimLabel.setText("Invalid image");
+        }
+    }
+
+    private void updateTargetMarker(ScreenInfo screen, Rectangle windowBounds) {
+        try {
+            AutomationActionType type = typeCombo.getValue();
+            if (type == AutomationActionType.WAIT || type == AutomationActionType.KEY_PRESS || type == AutomationActionType.STOP || type == AutomationActionType.CHECK_IMAGE) {
+                ActionTargetMarkerOverlay.hide();
+                return;
+            }
+            String xText = xField.getText();
+            String yText = yField.getText();
+            if (xText == null || xText.isBlank() || yText == null || yText.isBlank()) {
+                return;
+            }
+            int x = Integer.parseInt(xText.trim());
+            int y = Integer.parseInt(yText.trim());
+            CoordinateMode mode = modeCombo.getValue();
+            int screenX = x;
+            int screenY = y;
+            if (mode == CoordinateMode.WINDOW_RELATIVE && windowBounds != null) {
+                screenX = windowBounds.x + x;
+                screenY = windowBounds.y + y;
+            } else if (screen != null) {
+                screenX = screen.toGlobalX(x);
+                screenY = screen.toGlobalY(y);
+            }
+            String actionName = type != null ? type.name() : "ACTION";
+            String label = actionName + " (" + x + ", " + y + ")";
+            ActionTargetMarkerOverlay.show(screenX, screenY, label);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private Image convertToFxImage(BufferedImage bi) {
+        if (bi == null) return null;
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(bi, "png", baos);
+            return new Image(new ByteArrayInputStream(baos.toByteArray()));
+        } catch (Exception e) {
+            return null;
         }
     }
 }

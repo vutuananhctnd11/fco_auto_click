@@ -108,7 +108,13 @@ public class ActionExecutor {
                 case WAIT -> {
                     LoggerUtil.info(String.format("WAIT %dms", action.getDelayMs()));
                 }
+                case STOP -> {
+                    LoggerUtil.info("STOP action reached! Stopping automation execution.");
+                    throw new StopAutomationException("Automation stopped by STOP action");
+                }
             }
+        } catch (StopAutomationException e) {
+            throw e;
         } catch (Exception e) {
             LoggerUtil.error("Error executing action " + action.getType() + ": " + e.getMessage(), e);
         }

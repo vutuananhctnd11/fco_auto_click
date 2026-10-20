@@ -43,8 +43,10 @@ class I18nTest {
         I18n.setLocale(I18n.LOCALE_VI);
         assertTrue(I18n.get("action.type.click").contains("Click chuột trái"));
         assertTrue(I18n.get("action.type.check_image").contains("Kiểm tra hình ảnh"));
+        assertTrue(I18n.get("action.type.stop").contains("Dừng kịch bản"));
         assertEquals("CLICK", I18n.get("badge.action.click"));
         assertEquals("CHECK_IMAGE", I18n.get("badge.action.check_image"));
+        assertEquals("STOP", I18n.get("badge.action.stop"));
 
         String cellRegionVi = I18n.get("cell.region", 300, 200, 100, 150);
         assertEquals("Vùng: 300x200 tại (100, 150)", cellRegionVi);
@@ -52,7 +54,9 @@ class I18nTest {
         I18n.setLocale(I18n.LOCALE_EN);
         assertTrue(I18n.get("action.type.click").contains("Left Click"));
         assertTrue(I18n.get("action.type.check_image").contains("Check Image"));
+        assertTrue(I18n.get("action.type.stop").contains("Stop Script"));
         assertEquals("CHECK_IMAGE", I18n.get("badge.action.check_image"));
+        assertEquals("STOP", I18n.get("badge.action.stop"));
 
         String cellRegionEn = I18n.get("cell.region", 300, 200, 100, 150);
         assertEquals("Region: 300x200 at (100, 150)", cellRegionEn);
