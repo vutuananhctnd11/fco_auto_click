@@ -30,7 +30,7 @@ public class BackgroundMouseService {
         user32.PostMessage(hwnd, WM_MOUSEMOVE, new WinDef.WPARAM(0), lParam);
         user32.PostMessage(hwnd, WM_LBUTTONDOWN, new WinDef.WPARAM(MK_LBUTTON), lParam);
         try {
-            Thread.sleep(30);
+            Thread.sleep(50);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return false;
@@ -45,7 +45,7 @@ public class BackgroundMouseService {
         }
         click(hwnd, clientX, clientY);
         try {
-            Thread.sleep(intervalMs > 0 ? intervalMs : 50);
+            Thread.sleep(intervalMs > 0 ? intervalMs : 60);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return false;
@@ -64,7 +64,7 @@ public class BackgroundMouseService {
         user32.PostMessage(hwnd, WM_MOUSEMOVE, new WinDef.WPARAM(0), lParam);
         user32.PostMessage(hwnd, WM_RBUTTONDOWN, new WinDef.WPARAM(MK_RBUTTON), lParam);
         try {
-            Thread.sleep(30);
+            Thread.sleep(50);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return false;

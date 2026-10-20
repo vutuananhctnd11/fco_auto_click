@@ -73,6 +73,7 @@ public class ActionDialog extends Dialog<AutomationAction> {
         grid.setPadding(new Insets(14, 18, 14, 18));
 
         typeCombo = new ComboBox<>(FXCollections.observableArrayList(AutomationActionType.values()));
+        typeCombo.setValue(AutomationActionType.CLICK);
         modeCombo = new ComboBox<>(FXCollections.observableArrayList(CoordinateMode.values()));
         modeCombo.setValue(CoordinateMode.WINDOW_RELATIVE);
 
@@ -259,7 +260,7 @@ public class ActionDialog extends Dialog<AutomationAction> {
         Runnable updateVisibility = () -> {
             AutomationActionType type = typeCombo.getValue();
             boolean isCheckImage = (type == AutomationActionType.CHECK_IMAGE);
-            boolean isMouse = (type == AutomationActionType.CLICK || type == AutomationActionType.DOUBLE_CLICK || type == AutomationActionType.RIGHT_CLICK);
+            boolean isMouse = (type == AutomationActionType.CLICK || type == AutomationActionType.DOUBLE_CLICK || type == AutomationActionType.RIGHT_CLICK || type == AutomationActionType.MOVE || type == AutomationActionType.SCROLL);
             boolean isKey = (type == AutomationActionType.KEY_PRESS);
 
             modeCombo.setDisable(!isMouse && !isCheckImage);
@@ -314,8 +315,14 @@ public class ActionDialog extends Dialog<AutomationAction> {
         setResultConverter(buttonType -> {
             if (buttonType == ButtonType.OK) {
                 AutomationAction action = new AutomationAction();
-                action.setType(typeCombo.getValue());
-                action.setCoordinateMode(modeCombo.getValue());
+                AutomationActionType selectedType = typeCombo.getValue();
+                if (selectedType == null) {
+                    selectedType = AutomationActionType.CLICK;
+                }
+                action.setType(selectedType);
+
+                CoordinateMode selectedMode = modeCombo.getValue();
+                action.setCoordinateMode(selectedMode != null ? selectedMode : CoordinateMode.WINDOW_RELATIVE);
 
                 try {
                     action.setX(Integer.parseInt(xField.getText().trim()));

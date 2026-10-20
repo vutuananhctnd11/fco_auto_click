@@ -214,6 +214,11 @@ public class AutomationEngine {
                         Thread.sleep(1000);
                         continue;
                     }
+
+                    // Activate and bring window to front so game receives inputs
+                    if (!config.isBackgroundClick()) {
+                        windowManager.activateWindow(targetHwnd);
+                    }
                 }
 
                 boolean backgroundMode = config.isBackgroundClick();
@@ -300,7 +305,7 @@ public class AutomationEngine {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             LoggerUtil.info("Automation loop interrupted.");
-        } catch (Exception e) {
+        } catch (Throwable e) {
             LoggerUtil.error("Unexpected error in automation engine: " + e.getMessage(), e);
             setState(AutomationState.ERROR);
             running = false;

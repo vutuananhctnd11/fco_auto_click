@@ -87,4 +87,20 @@ public class WindowManager {
     public boolean isWindowValid(HWND hwnd) {
         return hwnd != null && user32.IsWindow(hwnd) && user32.IsWindowVisible(hwnd);
     }
+
+    /**
+     * Restores, brings to top, and activates the window so it receives keyboard and mouse input.
+     */
+    public boolean activateWindow(HWND hwnd) {
+        if (hwnd == null || !user32.IsWindow(hwnd)) {
+            return false;
+        }
+        try {
+            user32.ShowWindow(hwnd, 9); // SW_RESTORE
+            return user32.SetForegroundWindow(hwnd);
+        } catch (Throwable t) {
+            LoggerUtil.warn("Failed to activate target window: " + t.getMessage());
+            return false;
+        }
+    }
 }

@@ -49,7 +49,9 @@ public class ActionListCell extends ListCell<AutomationAction> {
 
         if (action.getType() == AutomationActionType.CLICK ||
                 action.getType() == AutomationActionType.DOUBLE_CLICK ||
-                action.getType() == AutomationActionType.RIGHT_CLICK) {
+                action.getType() == AutomationActionType.RIGHT_CLICK ||
+                action.getType() == AutomationActionType.MOVE ||
+                action.getType() == AutomationActionType.SCROLL) {
 
             // Glowing target marker dot
             Label targetDot = new Label("●");
@@ -119,14 +121,17 @@ public class ActionListCell extends ListCell<AutomationAction> {
     }
 
     private String getTypeBadgeText(AutomationActionType type) {
-        if (type == null) return "ACTION";
+        if (type == null) return "🖱️ CLICK";
         return switch (type) {
             case CLICK -> "🖱️ CLICK";
             case DOUBLE_CLICK -> "⚡ DBL_CLICK";
             case RIGHT_CLICK -> "🖱️ RIGHT_CLICK";
+            case MOVE -> "↗️ MOVE";
+            case SCROLL -> "📜 SCROLL";
             case CHECK_IMAGE -> "🔍 CHECK_IMAGE";
             case KEY_PRESS -> "⌨️ KEY_PRESS";
             case WAIT -> "⏱️ WAIT";
+            default -> type.name();
         };
     }
 
@@ -137,9 +142,12 @@ public class ActionListCell extends ListCell<AutomationAction> {
             case CLICK -> base + "-fx-text-fill: #10b981; -fx-background-color: #064e3b; -fx-border-color: #059669; -fx-border-radius: 6px;";
             case DOUBLE_CLICK -> base + "-fx-text-fill: #06b6d4; -fx-background-color: #083344; -fx-border-color: #0891b2; -fx-border-radius: 6px;";
             case RIGHT_CLICK -> base + "-fx-text-fill: #c084fc; -fx-background-color: #3b0764; -fx-border-color: #7e22ce; -fx-border-radius: 6px;";
+            case MOVE -> base + "-fx-text-fill: #38bdf8; -fx-background-color: #0c4a6e; -fx-border-color: #0284c7; -fx-border-radius: 6px;";
+            case SCROLL -> base + "-fx-text-fill: #a78bfa; -fx-background-color: #2e1065; -fx-border-color: #7c3aed; -fx-border-radius: 6px;";
             case CHECK_IMAGE -> base + "-fx-text-fill: #f43f5e; -fx-background-color: #4c0519; -fx-border-color: #be123c; -fx-border-radius: 6px;";
             case KEY_PRESS -> base + "-fx-text-fill: #f59e0b; -fx-background-color: #451a03; -fx-border-color: #d97706; -fx-border-radius: 6px;";
             case WAIT -> base + "-fx-text-fill: #cbd5e1; -fx-background-color: #334155; -fx-border-color: #475569; -fx-border-radius: 6px;";
+            default -> base + "-fx-text-fill: #ffffff; -fx-background-color: #1e293b;";
         };
     }
 }

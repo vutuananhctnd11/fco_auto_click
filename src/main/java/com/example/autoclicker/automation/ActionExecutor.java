@@ -90,6 +90,17 @@ public class ActionExecutor {
                         mouseController.rightClick(globalX, globalY);
                     }
                 }
+                case MOVE -> {
+                    LoggerUtil.info(String.format("MOVE to (%d, %d) [rel: %d, %d, mode: %s]",
+                            globalX, globalY, action.getX(), action.getY(), action.getCoordinateMode()));
+                    mouseController.smoothMove(globalX, globalY);
+                }
+                case SCROLL -> {
+                    LoggerUtil.info(String.format("SCROLL amount=%d at (%d, %d)",
+                            action.getScrollAmount(), globalX, globalY));
+                    mouseController.move(globalX, globalY);
+                    mouseController.scroll(action.getScrollAmount());
+                }
                 case KEY_PRESS -> {
                     LoggerUtil.info(String.format("KEY_PRESS Key=%s", action.getKeyName()));
                     keyboardController.pressKeyByName(action.getKeyName());

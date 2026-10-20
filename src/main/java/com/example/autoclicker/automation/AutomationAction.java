@@ -23,6 +23,7 @@ public class AutomationAction {
     // Parameters for CHECK_IMAGE
     private String templatePath = "";
     private double threshold = 0.90;
+    private int scrollAmount = -1;
 
     public AutomationAction() {
         this.type = AutomationActionType.CLICK;
@@ -33,6 +34,7 @@ public class AutomationAction {
         this.keyName = "";
         this.delayMs = 300;
         this.coordinateMode = CoordinateMode.WINDOW_RELATIVE;
+        this.scrollAmount = -1;
     }
 
     public AutomationAction(AutomationActionType type, int x, int y, int delayMs) {
@@ -48,6 +50,7 @@ public class AutomationAction {
         this.keyName = "";
         this.delayMs = delayMs;
         this.coordinateMode = coordinateMode != null ? coordinateMode : CoordinateMode.WINDOW_RELATIVE;
+        this.scrollAmount = -1;
     }
 
     public AutomationAction(AutomationActionType type, String keyName, int delayMs) {
@@ -59,6 +62,7 @@ public class AutomationAction {
         this.keyName = keyName;
         this.delayMs = delayMs;
         this.coordinateMode = CoordinateMode.WINDOW_RELATIVE;
+        this.scrollAmount = -1;
     }
 
     public AutomationAction(AutomationAction other) {
@@ -72,6 +76,7 @@ public class AutomationAction {
         this.coordinateMode = other.coordinateMode != null ? other.coordinateMode : CoordinateMode.WINDOW_RELATIVE;
         this.templatePath = other.templatePath != null ? other.templatePath : "";
         this.threshold = other.threshold;
+        this.scrollAmount = other.scrollAmount;
     }
 
     public CoordinateMode getCoordinateMode() {
@@ -154,6 +159,14 @@ public class AutomationAction {
         this.threshold = threshold;
     }
 
+    public int getScrollAmount() {
+        return scrollAmount;
+    }
+
+    public void setScrollAmount(int scrollAmount) {
+        this.scrollAmount = scrollAmount;
+    }
+
     public CaptureRegion getCaptureRegion() {
         return new CaptureRegion(x, y, width, height, coordinateMode);
     }
@@ -175,13 +188,14 @@ public class AutomationAction {
         AutomationAction that = (AutomationAction) o;
         return x == that.x && y == that.y && width == that.width && height == that.height
                 && delayMs == that.delayMs && Double.compare(threshold, that.threshold) == 0
+                && scrollAmount == that.scrollAmount
                 && type == that.type && Objects.equals(keyName, that.keyName)
                 && coordinateMode == that.coordinateMode && Objects.equals(templatePath, that.templatePath);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(type, x, y, width, height, keyName, delayMs, coordinateMode, templatePath, threshold);
+        return Objects.hash(type, x, y, width, height, keyName, delayMs, coordinateMode, templatePath, threshold, scrollAmount);
     }
 
     @Override
@@ -191,6 +205,8 @@ public class AutomationAction {
             return String.format("%-12s | Key: %-6s | Delay: %dms", type, keyName, delayMs);
         } else if (type == AutomationActionType.WAIT) {
             return String.format("%-12s | Delay: %dms", type, delayMs);
+        } else if (type == AutomationActionType.SCROLL) {
+            return String.format("%-12s | (%d, %d) [%s] | Scroll: %d | Delay: %dms", type, x, y, modeStr, scrollAmount, delayMs);
         } else if (type == AutomationActionType.CHECK_IMAGE) {
             String filename = templatePath.isBlank() ? "None" : new File(templatePath).getName();
             return String.format("%-12s | [%d,%d %dx%d %s] | Thresh: %.2f | Tpl: %s",
@@ -200,3 +216,4 @@ public class AutomationAction {
         }
     }
 }
+

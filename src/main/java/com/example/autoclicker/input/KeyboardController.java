@@ -59,7 +59,26 @@ public class KeyboardController {
     }
 
     public void pressAndRelease(int keyCode) {
+        pressAndRelease(keyCode, 50);
+    }
+
+    public void pressAndRelease(int keyCode, int holdMs) {
+        int delay = holdMs > 0 ? holdMs : 50;
+        if (WindowsNativeInput.isAvailable()) {
+            int winVk = keyCode;
+            if (keyCode == KeyEvent.VK_ENTER) {
+                winVk = 0x0D; // Windows VK_RETURN
+            }
+            WindowsNativeInput.pressKey(winVk, delay);
+            return;
+        }
+
         robot.keyPress(keyCode);
+        try {
+            Thread.sleep(delay);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
         robot.keyRelease(keyCode);
     }
 
@@ -83,3 +102,4 @@ public class KeyboardController {
         }
     }
 }
+
