@@ -196,4 +196,51 @@ class AutomationEngineTest {
         assertFalse(engine.isRunning());
         assertEquals(List.of(1, 2), loopsRecorded);
     }
+
+    @Test
+    void testMultiLevelBranchingToBranchC() throws InterruptedException {
+        AutomationConfig config = new AutomationConfig();
+        config.setTargetScreen(0);
+        config.setRepeatCount(1);
+
+        // 1. Initial Action triggers Level 1 CHECK_IMAGE -> MATCH (Branch A)
+        AutomationAction initialCheck = new AutomationAction();
+        initialCheck.setType(AutomationActionType.CHECK_IMAGE);
+        initialCheck.setTemplatePath(tempTemplateFile.getAbsolutePath());
+        initialCheck.setThreshold(0.85);
+        initialCheck.setCaptureRegion(new CaptureRegion(0, 0, 100, 100));
+        config.setInitialActions(List.of(initialCheck));
+
+        // 2. Branch A triggers Level 2 CHECK_IMAGE -> MATCH (Branch C)
+        AutomationAction branchACheck = new AutomationAction();
+        branchACheck.setType(AutomationActionType.CHECK_IMAGE);
+        branchACheck.setTemplatePath(tempTemplateFile.getAbsolutePath());
+        branchACheck.setThreshold(0.85);
+        branchACheck.setCaptureRegion(new CaptureRegion(0, 0, 100, 100));
+        config.setBranchA(List.of(branchACheck));
+
+        // 3. Branch C has an action
+        AutomationAction branchCAction = new AutomationAction(AutomationActionType.WAIT, 0, 0, 10);
+        config.setBranchC(List.of(branchCAction));
+
+        List<AutomationState> recordedStates = Collections.synchronizedList(new ArrayList<>());
+        CountDownLatch finishLatch = new CountDownLatch(1);
+
+        engine.addStateListener(state -> {
+            recordedStates.add(state);
+            if (state == AutomationState.STOPPED) {
+                finishLatch.countDown();
+            }
+        });
+
+        engine.start(config);
+        boolean finished = finishLatch.await(5, TimeUnit.SECONDS);
+
+        assertTrue(finished);
+        assertTrue(recordedStates.contains(AutomationState.EXECUTING_INITIAL_ACTIONS));
+        assertTrue(recordedStates.contains(AutomationState.EXECUTING_BRANCH_A));
+        assertTrue(recordedStates.contains(AutomationState.EXECUTING_BRANCH_C));
+        assertFalse(recordedStates.contains(AutomationState.EXECUTING_BRANCH_B));
+        assertFalse(recordedStates.contains(AutomationState.EXECUTING_BRANCH_D));
+    }
 }

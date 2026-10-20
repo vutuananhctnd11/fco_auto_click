@@ -4,7 +4,6 @@ import com.example.autoclicker.automation.*;
 import com.example.autoclicker.config.AutomationConfig;
 import com.example.autoclicker.config.JsonConfigRepository;
 import com.example.autoclicker.image.ImageDetector;
-import com.example.autoclicker.image.MatchResult;
 import com.example.autoclicker.image.ScreenshotService;
 import com.example.autoclicker.screen.ScreenInfo;
 import com.example.autoclicker.screen.ScreenManager;
@@ -14,12 +13,16 @@ import com.example.autoclicker.window.WindowInfo;
 import com.example.autoclicker.window.WindowManager;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.stage.FileChooser;
 
 import java.awt.Rectangle;
@@ -31,7 +34,8 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Main UI Controller for FCOAutoClick with i18n support, Toolbar controls, and dynamic CHECK_IMAGE branching.
+ * Main UI Controller for FCOAutoClick with full bilingual i18n support, Toolbar controls,
+ * and dynamic multi-level CHECK_IMAGE branching (Initial -> A/B -> C/D/E/F).
  * Developed by TunEngDev2003.
  */
 public class MainController {
@@ -45,13 +49,15 @@ public class MainController {
     @FXML private Label engineStatusBadge;
     @FXML private Label loopCounterLabel;
 
-    // Top Toolbar Controls
+    // Top Brand Bar Controls (Inline)
     @FXML private MenuButton optionsMenuButton;
     @FXML private MenuItem openProfileMenuItem;
     @FXML private MenuItem saveProfileMenuItem;
     @FXML private Menu languageSubMenu;
     @FXML private RadioMenuItem langEnMenuItem;
     @FXML private RadioMenuItem langViMenuItem;
+
+    // Window & Screen Controls
     @FXML private Label toolbarWindowLabel;
     @FXML private ComboBox<WindowInfo> windowComboBox;
     @FXML private Button refreshWindowsBtn;
@@ -69,9 +75,10 @@ public class MainController {
     @FXML private CheckBox backgroundClickCheckBox;
     @FXML private CheckBox showMarkerCheckBox;
 
-    // Main Actions Workspace (3 Tabs)
+    // Main Actions Workspace (TabPane)
     @FXML private TabPane branchTabPane;
 
+    // 1. Initial Actions
     @FXML private Tab initialTab;
     @FXML private Label initialTabDesc;
     @FXML private ListView<AutomationAction> initialListView;
@@ -83,25 +90,73 @@ public class MainController {
     @FXML private Button upInitialBtn;
     @FXML private Button downInitialBtn;
 
+    // 2. Branch A (Level 1 MATCH)
     @FXML private Tab branchATab;
     @FXML private Label branchATabDesc;
     @FXML private ListView<AutomationAction> branchAListView;
     @FXML private Button addBranchABtn;
+    @FXML private Button addCheckImageBranchABtn;
     @FXML private Button pickCoordBranchABtn;
     @FXML private Button editBranchABtn;
     @FXML private Button delBranchABtn;
     @FXML private Button upBranchABtn;
     @FXML private Button downBranchABtn;
 
+    // 3. Branch C (Level 2 MATCH from Branch A)
+    @FXML private Tab branchCTab;
+    @FXML private Label branchCTabDesc;
+    @FXML private ListView<AutomationAction> branchCListView;
+    @FXML private Button addBranchCBtn;
+    @FXML private Button pickCoordBranchCBtn;
+    @FXML private Button editBranchCBtn;
+    @FXML private Button delBranchCBtn;
+    @FXML private Button upBranchCBtn;
+    @FXML private Button downBranchCBtn;
+
+    // 4. Branch D (Level 2 NOT MATCH from Branch A)
+    @FXML private Tab branchDTab;
+    @FXML private Label branchDTabDesc;
+    @FXML private ListView<AutomationAction> branchDListView;
+    @FXML private Button addBranchDBtn;
+    @FXML private Button pickCoordBranchDBtn;
+    @FXML private Button editBranchDBtn;
+    @FXML private Button delBranchDBtn;
+    @FXML private Button upBranchDBtn;
+    @FXML private Button downBranchDBtn;
+
+    // 5. Branch B (Level 1 NOT MATCH)
     @FXML private Tab branchBTab;
     @FXML private Label branchBTabDesc;
     @FXML private ListView<AutomationAction> branchBListView;
     @FXML private Button addBranchBBtn;
+    @FXML private Button addCheckImageBranchBBtn;
     @FXML private Button pickCoordBranchBBtn;
     @FXML private Button editBranchBBtn;
     @FXML private Button delBranchBBtn;
     @FXML private Button upBranchBBtn;
     @FXML private Button downBranchBBtn;
+
+    // 6. Branch E (Level 2 MATCH from Branch B)
+    @FXML private Tab branchETab;
+    @FXML private Label branchETabDesc;
+    @FXML private ListView<AutomationAction> branchEListView;
+    @FXML private Button addBranchEBtn;
+    @FXML private Button pickCoordBranchEBtn;
+    @FXML private Button editBranchEBtn;
+    @FXML private Button delBranchEBtn;
+    @FXML private Button upBranchEBtn;
+    @FXML private Button downBranchEBtn;
+
+    // 7. Branch F (Level 2 NOT MATCH from Branch B)
+    @FXML private Tab branchFTab;
+    @FXML private Label branchFTabDesc;
+    @FXML private ListView<AutomationAction> branchFListView;
+    @FXML private Button addBranchFBtn;
+    @FXML private Button pickCoordBranchFBtn;
+    @FXML private Button editBranchFBtn;
+    @FXML private Button delBranchFBtn;
+    @FXML private Button upBranchFBtn;
+    @FXML private Button downBranchFBtn;
 
     // Log Console & Footer
     @FXML private Label logConsoleTitle;
@@ -121,6 +176,10 @@ public class MainController {
     private final ObservableList<AutomationAction> initialActions = FXCollections.observableArrayList();
     private final ObservableList<AutomationAction> branchAActions = FXCollections.observableArrayList();
     private final ObservableList<AutomationAction> branchBActions = FXCollections.observableArrayList();
+    private final ObservableList<AutomationAction> branchCActions = FXCollections.observableArrayList();
+    private final ObservableList<AutomationAction> branchDActions = FXCollections.observableArrayList();
+    private final ObservableList<AutomationAction> branchEActions = FXCollections.observableArrayList();
+    private final ObservableList<AutomationAction> branchFActions = FXCollections.observableArrayList();
 
     @FXML
     public void initialize() {
@@ -136,41 +195,83 @@ public class MainController {
         initialListView.setItems(initialActions);
         branchAListView.setItems(branchAActions);
         branchBListView.setItems(branchBActions);
+        branchCListView.setItems(branchCActions);
+        branchDListView.setItems(branchDActions);
+        branchEListView.setItems(branchEActions);
+        branchFListView.setItems(branchFActions);
 
         // Custom Cell Factory for beautiful action items
         initialListView.setCellFactory(lv -> new ActionListCell());
         branchAListView.setCellFactory(lv -> new ActionListCell());
         branchBListView.setCellFactory(lv -> new ActionListCell());
+        branchCListView.setCellFactory(lv -> new ActionListCell());
+        branchDListView.setCellFactory(lv -> new ActionListCell());
+        branchEListView.setCellFactory(lv -> new ActionListCell());
+        branchFListView.setCellFactory(lv -> new ActionListCell());
 
         // Double-click to Edit Action
-        initialListView.setOnMouseClicked(event -> {
-            if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {
-                handleEditActionInitial();
-            }
-        });
-        branchAListView.setOnMouseClicked(event -> {
-            if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {
-                handleEditActionBranchA();
-            }
-        });
-        branchBListView.setOnMouseClicked(event -> {
-            if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {
-                handleEditActionBranchB();
-            }
-        });
+        setupDoubleClickEdit(initialListView, this::handleEditActionInitial);
+        setupDoubleClickEdit(branchAListView, this::handleEditActionBranchA);
+        setupDoubleClickEdit(branchBListView, this::handleEditActionBranchB);
+        setupDoubleClickEdit(branchCListView, this::handleEditActionBranchC);
+        setupDoubleClickEdit(branchDListView, this::handleEditActionBranchD);
+        setupDoubleClickEdit(branchEListView, this::handleEditActionBranchE);
+        setupDoubleClickEdit(branchFListView, this::handleEditActionBranchF);
 
         // Setup On-screen Target Marker on Action Selection
         setupSelectionMarker(initialListView);
         setupSelectionMarker(branchAListView);
         setupSelectionMarker(branchBListView);
+        setupSelectionMarker(branchCListView);
+        setupSelectionMarker(branchDListView);
+        setupSelectionMarker(branchEListView);
+        setupSelectionMarker(branchFListView);
 
+        // Dynamic tabs: show C & D only if Branch A has CHECK_IMAGE, show E & F only if Branch B has CHECK_IMAGE
+        branchAActions.addListener((ListChangeListener<AutomationAction>) c -> updateDynamicBranchTabs());
+        branchBActions.addListener((ListChangeListener<AutomationAction>) c -> updateDynamicBranchTabs());
+        updateDynamicBranchTabs();
+
+        // Hide marker and clear selection when switching tabs
         branchTabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
+            clearAllActionSelections();
             ActionTargetMarkerOverlay.hide();
         });
 
+        // Toggle marker visibility
         showMarkerCheckBox.selectedProperty().addListener((obs, oldVal, newVal) -> {
             if (!newVal) {
                 ActionTargetMarkerOverlay.hide();
+            }
+        });
+
+        // Setup click-outside handler to dismiss target marker and selection
+        Platform.runLater(() -> {
+            if (branchTabPane.getScene() != null) {
+                Scene scene = branchTabPane.getScene();
+                scene.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
+                    Node target = (Node) event.getTarget();
+                    boolean isInsideCell = false;
+                    while (target != null && target != scene.getRoot()) {
+                        if (target instanceof ListCell && ((ListCell<?>) target).getItem() != null) {
+                            isInsideCell = true;
+                            break;
+                        }
+                        target = target.getParent();
+                    }
+                    if (!isInsideCell) {
+                        clearAllActionSelections();
+                        ActionTargetMarkerOverlay.hide();
+                    }
+                });
+
+                if (scene.getWindow() != null) {
+                    scene.getWindow().focusedProperty().addListener((obs, oldVal, newVal) -> {
+                        if (!newVal) {
+                            ActionTargetMarkerOverlay.hide();
+                        }
+                    });
+                }
             }
         });
 
@@ -221,7 +322,7 @@ public class MainController {
         // Match Observer (Logs match results)
         automationEngine.addMatchListener((result, state) -> Platform.runLater(() -> {
             LoggerUtil.info(String.format("Match confidence = %.2f -> %s", result.getConfidence(),
-                    result.isMatched() ? "MATCH (Branch A)" : "NOT MATCH (Branch B)"));
+                    result.isMatched() ? "MATCH" : "NOT MATCH"));
         }));
 
         // Log Listener
@@ -233,6 +334,101 @@ public class MainController {
 
         applyI18n();
         LoggerUtil.info("FCOAutoClick v1.0.0 [TunEngDev2003] initialized. Ready.");
+    }
+
+    /**
+     * Dynamically displays Branch C and D only if Branch A has a CHECK_IMAGE action.
+     * Dynamically displays Branch E and F only if Branch B has a CHECK_IMAGE action.
+     */
+    private void updateDynamicBranchTabs() {
+        boolean hasCheckInA = hasCheckImageAction(branchAActions);
+        boolean hasCheckInB = hasCheckImageAction(branchBActions);
+
+        ObservableList<Tab> tabs = branchTabPane.getTabs();
+
+        // 1. Branch C & D (sub-branches of A)
+        if (hasCheckInA) {
+            if (!tabs.contains(branchCTab)) {
+                int idxA = tabs.indexOf(branchATab);
+                if (idxA >= 0) {
+                    tabs.add(idxA + 1, branchCTab);
+                    tabs.add(idxA + 2, branchDTab);
+                } else {
+                    tabs.add(branchCTab);
+                    tabs.add(branchDTab);
+                }
+            }
+        } else {
+            if (tabs.contains(branchCTab)) {
+                Tab current = branchTabPane.getSelectionModel().getSelectedItem();
+                if (current == branchCTab || current == branchDTab) {
+                    branchTabPane.getSelectionModel().select(branchATab);
+                }
+                tabs.remove(branchCTab);
+                tabs.remove(branchDTab);
+            }
+        }
+
+        // 2. Branch E & F (sub-branches of B)
+        if (hasCheckInB) {
+            if (!tabs.contains(branchETab)) {
+                int idxB = tabs.indexOf(branchBTab);
+                if (idxB >= 0) {
+                    tabs.add(idxB + 1, branchETab);
+                    tabs.add(idxB + 2, branchFTab);
+                } else {
+                    tabs.add(branchETab);
+                    tabs.add(branchFTab);
+                }
+            }
+        } else {
+            if (tabs.contains(branchETab)) {
+                Tab current = branchTabPane.getSelectionModel().getSelectedItem();
+                if (current == branchETab || current == branchFTab) {
+                    branchTabPane.getSelectionModel().select(branchBTab);
+                }
+                tabs.remove(branchETab);
+                tabs.remove(branchFTab);
+            }
+        }
+    }
+
+    private boolean hasCheckImageAction(List<AutomationAction> list) {
+        if (list == null) return false;
+        for (AutomationAction a : list) {
+            if (a.getType() == AutomationActionType.CHECK_IMAGE) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void setupDoubleClickEdit(ListView<AutomationAction> listView, Runnable editAction) {
+        listView.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {
+                editAction.run();
+            }
+        });
+    }
+
+    private void clearAllActionSelections() {
+        if (initialListView != null) initialListView.getSelectionModel().clearSelection();
+        if (branchAListView != null) branchAListView.getSelectionModel().clearSelection();
+        if (branchBListView != null) branchBListView.getSelectionModel().clearSelection();
+        if (branchCListView != null) branchCListView.getSelectionModel().clearSelection();
+        if (branchDListView != null) branchDListView.getSelectionModel().clearSelection();
+        if (branchEListView != null) branchEListView.getSelectionModel().clearSelection();
+        if (branchFListView != null) branchFListView.getSelectionModel().clearSelection();
+    }
+
+    private void refreshAllListViews() {
+        if (initialListView != null) initialListView.refresh();
+        if (branchAListView != null) branchAListView.refresh();
+        if (branchBListView != null) branchBListView.refresh();
+        if (branchCListView != null) branchCListView.refresh();
+        if (branchDListView != null) branchDListView.refresh();
+        if (branchEListView != null) branchEListView.refresh();
+        if (branchFListView != null) branchFListView.refresh();
     }
 
     @FXML
@@ -266,36 +462,78 @@ public class MainController {
         refreshWindowsBtn.setText(I18n.get("btn.refresh_windows"));
         windowComboBox.setPromptText(I18n.get("prompt.select_window"));
 
-        // Tab 1
+        // 1. Initial Tab
         initialTab.setText(I18n.get("tab.initial_actions"));
         initialTabDesc.setText(I18n.get("tab.initial_desc"));
         addInitialBtn.setText(I18n.get("btn.add_action"));
-        addCheckImageBtn.setText(I18n.get("btn.add_check_image"));
+        addCheckImageBtn.setText(I18n.get("btn.add_check_image_initial"));
         pickCoordInitialBtn.setText(I18n.get("btn.pick_coord"));
         editInitialBtn.setText(I18n.get("btn.edit"));
         delInitialBtn.setText(I18n.get("btn.delete"));
         upInitialBtn.setText(I18n.get("btn.move_up"));
         downInitialBtn.setText(I18n.get("btn.move_down"));
 
-        // Tab 2
+        // 2. Branch A
         branchATab.setText(I18n.get("tab.branch_a"));
         branchATabDesc.setText(I18n.get("tab.branch_a_desc"));
         addBranchABtn.setText(I18n.get("btn.add_action"));
+        addCheckImageBranchABtn.setText(I18n.get("btn.add_check_image_a"));
         pickCoordBranchABtn.setText(I18n.get("btn.pick_coord"));
         editBranchABtn.setText(I18n.get("btn.edit"));
         delBranchABtn.setText(I18n.get("btn.delete"));
         upBranchABtn.setText(I18n.get("btn.move_up"));
         downBranchABtn.setText(I18n.get("btn.move_down"));
 
-        // Tab 3
+        // 3. Branch C
+        branchCTab.setText(I18n.get("tab.branch_c"));
+        branchCTabDesc.setText(I18n.get("tab.branch_c_desc"));
+        addBranchCBtn.setText(I18n.get("btn.add_action"));
+        pickCoordBranchCBtn.setText(I18n.get("btn.pick_coord"));
+        editBranchCBtn.setText(I18n.get("btn.edit"));
+        delBranchCBtn.setText(I18n.get("btn.delete"));
+        upBranchCBtn.setText(I18n.get("btn.move_up"));
+        downBranchCBtn.setText(I18n.get("btn.move_down"));
+
+        // 4. Branch D
+        branchDTab.setText(I18n.get("tab.branch_d"));
+        branchDTabDesc.setText(I18n.get("tab.branch_d_desc"));
+        addBranchDBtn.setText(I18n.get("btn.add_action"));
+        pickCoordBranchDBtn.setText(I18n.get("btn.pick_coord"));
+        editBranchDBtn.setText(I18n.get("btn.edit"));
+        delBranchDBtn.setText(I18n.get("btn.delete"));
+        upBranchDBtn.setText(I18n.get("btn.move_up"));
+        downBranchDBtn.setText(I18n.get("btn.move_down"));
+
+        // 5. Branch B
         branchBTab.setText(I18n.get("tab.branch_b"));
         branchBTabDesc.setText(I18n.get("tab.branch_b_desc"));
         addBranchBBtn.setText(I18n.get("btn.add_action"));
+        addCheckImageBranchBBtn.setText(I18n.get("btn.add_check_image_b"));
         pickCoordBranchBBtn.setText(I18n.get("btn.pick_coord"));
         editBranchBBtn.setText(I18n.get("btn.edit"));
         delBranchBBtn.setText(I18n.get("btn.delete"));
         upBranchBBtn.setText(I18n.get("btn.move_up"));
         downBranchBBtn.setText(I18n.get("btn.move_down"));
+
+        // 6. Branch E
+        branchETab.setText(I18n.get("tab.branch_e"));
+        branchETabDesc.setText(I18n.get("tab.branch_e_desc"));
+        addBranchEBtn.setText(I18n.get("btn.add_action"));
+        pickCoordBranchEBtn.setText(I18n.get("btn.pick_coord"));
+        editBranchEBtn.setText(I18n.get("btn.edit"));
+        delBranchEBtn.setText(I18n.get("btn.delete"));
+        upBranchEBtn.setText(I18n.get("btn.move_up"));
+        downBranchEBtn.setText(I18n.get("btn.move_down"));
+
+        // 7. Branch F
+        branchFTab.setText(I18n.get("tab.branch_f"));
+        branchFTabDesc.setText(I18n.get("tab.branch_f_desc"));
+        addBranchFBtn.setText(I18n.get("btn.add_action"));
+        pickCoordBranchFBtn.setText(I18n.get("btn.pick_coord"));
+        editBranchFBtn.setText(I18n.get("btn.edit"));
+        delBranchFBtn.setText(I18n.get("btn.delete"));
+        upBranchFBtn.setText(I18n.get("btn.move_up"));
+        downBranchFBtn.setText(I18n.get("btn.move_down"));
 
         engineStatusLabel.setText(I18n.get("lbl.engine_status"));
         startButton.setText(I18n.get("btn.start"));
@@ -310,6 +548,8 @@ public class MainController {
         footerCopyrightLabel.setText(I18n.get("app.title") + " v1.0.0 \u2022 " + I18n.get("app.copyright"));
 
         updateWindowStatus(windowComboBox.getValue());
+        updateEngineStateUI(automationEngine.getState());
+        refreshAllListViews();
     }
 
     private void setupSelectionMarker(ListView<AutomationAction> listView) {
@@ -329,8 +569,7 @@ public class MainController {
                 screenX = windowBounds.x + newAction.getX();
                 screenY = windowBounds.y + newAction.getY();
             }
-            String info = String.format("%s (%d, %d)", newAction.getType(), newAction.getX(), newAction.getY());
-            ActionTargetMarkerOverlay.show(screenX, screenY, info);
+            ActionTargetMarkerOverlay.show(screenX, screenY);
         });
     }
 
@@ -355,24 +594,15 @@ public class MainController {
         }
         if (fcoWindow != null) {
             windowComboBox.getSelectionModel().select(fcoWindow);
-        } else if (!windows.isEmpty() && windowComboBox.getValue() == null) {
+        } else if (!windows.isEmpty()) {
             windowComboBox.getSelectionModel().select(0);
         }
         updateWindowStatus(windowComboBox.getValue());
     }
 
     private void updateWindowStatus(WindowInfo window) {
-        if (window == null) {
-            windowStatusLabel.setText(I18n.get("lbl.window_not_found"));
-            windowStatusLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #f43f5e; -fx-font-weight: bold;");
-            return;
-        }
-
-        Rectangle currentBounds = windowManager.getWindowBounds(window.getHwnd());
-        if (currentBounds != null) {
-            window.setBounds(currentBounds);
-            windowStatusLabel.setText(String.format("0x%X (%dx%d)",
-                    window.getHwndVal(), currentBounds.width, currentBounds.height));
+        if (window != null && windowManager.isWindowValid(window.getHwnd())) {
+            windowStatusLabel.setText("Active: " + window.getTitle());
             windowStatusLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #34d399; -fx-font-weight: bold;");
         } else {
             windowStatusLabel.setText(I18n.get("lbl.window_not_found"));
@@ -393,6 +623,7 @@ public class MainController {
     }
 
     private void updateEngineStateUI(AutomationState state) {
+        if (state == null) state = AutomationState.IDLE;
         engineStatusBadge.setText(state.name());
         engineStatusBadge.getStyleClass().removeAll("badge-idle", "badge-running", "badge-checking", "badge-stopping");
 
@@ -403,7 +634,7 @@ public class MainController {
                 stopButton.setDisable(true);
                 repeatCountField.setDisable(false);
                 backgroundClickCheckBox.setDisable(false);
-                loopCounterLabel.setText("Idle");
+                loopCounterLabel.setText(I18n.get("status.idle"));
             }
             case EXECUTING_INITIAL_ACTIONS -> {
                 ActionTargetMarkerOverlay.hide();
@@ -412,7 +643,7 @@ public class MainController {
                 stopButton.setDisable(false);
                 repeatCountField.setDisable(true);
                 backgroundClickCheckBox.setDisable(true);
-                loopCounterLabel.setText("Running Initial Actions...");
+                loopCounterLabel.setText(I18n.get("status.executing_initial"));
             }
             case CHECKING_IMAGE -> {
                 ActionTargetMarkerOverlay.hide();
@@ -421,7 +652,7 @@ public class MainController {
                 stopButton.setDisable(false);
                 repeatCountField.setDisable(true);
                 backgroundClickCheckBox.setDisable(true);
-                loopCounterLabel.setText("Checking image...");
+                loopCounterLabel.setText(I18n.get("status.checking_image"));
             }
             case EXECUTING_BRANCH_A -> {
                 ActionTargetMarkerOverlay.hide();
@@ -430,7 +661,7 @@ public class MainController {
                 stopButton.setDisable(false);
                 repeatCountField.setDisable(true);
                 backgroundClickCheckBox.setDisable(true);
-                loopCounterLabel.setText("Running Branch A (MATCH)");
+                loopCounterLabel.setText(I18n.get("status.executing_branch_a"));
             }
             case EXECUTING_BRANCH_B -> {
                 ActionTargetMarkerOverlay.hide();
@@ -439,7 +670,43 @@ public class MainController {
                 stopButton.setDisable(false);
                 repeatCountField.setDisable(true);
                 backgroundClickCheckBox.setDisable(true);
-                loopCounterLabel.setText("Running Branch B (NOT MATCH)");
+                loopCounterLabel.setText(I18n.get("status.executing_branch_b"));
+            }
+            case EXECUTING_BRANCH_C -> {
+                ActionTargetMarkerOverlay.hide();
+                engineStatusBadge.getStyleClass().add("badge-running");
+                startButton.setDisable(true);
+                stopButton.setDisable(false);
+                repeatCountField.setDisable(true);
+                backgroundClickCheckBox.setDisable(true);
+                loopCounterLabel.setText(I18n.get("status.executing_branch_c"));
+            }
+            case EXECUTING_BRANCH_D -> {
+                ActionTargetMarkerOverlay.hide();
+                engineStatusBadge.getStyleClass().add("badge-running");
+                startButton.setDisable(true);
+                stopButton.setDisable(false);
+                repeatCountField.setDisable(true);
+                backgroundClickCheckBox.setDisable(true);
+                loopCounterLabel.setText(I18n.get("status.executing_branch_d"));
+            }
+            case EXECUTING_BRANCH_E -> {
+                ActionTargetMarkerOverlay.hide();
+                engineStatusBadge.getStyleClass().add("badge-running");
+                startButton.setDisable(true);
+                stopButton.setDisable(false);
+                repeatCountField.setDisable(true);
+                backgroundClickCheckBox.setDisable(true);
+                loopCounterLabel.setText(I18n.get("status.executing_branch_e"));
+            }
+            case EXECUTING_BRANCH_F -> {
+                ActionTargetMarkerOverlay.hide();
+                engineStatusBadge.getStyleClass().add("badge-running");
+                startButton.setDisable(true);
+                stopButton.setDisable(false);
+                repeatCountField.setDisable(true);
+                backgroundClickCheckBox.setDisable(true);
+                loopCounterLabel.setText(I18n.get("status.executing_branch_f"));
             }
             case STOPPING -> {
                 engineStatusBadge.getStyleClass().add("badge-stopping");
@@ -447,7 +714,7 @@ public class MainController {
                 stopButton.setDisable(true);
                 repeatCountField.setDisable(true);
                 backgroundClickCheckBox.setDisable(true);
-                loopCounterLabel.setText("Stopping engine...");
+                loopCounterLabel.setText(I18n.get("status.stopping"));
             }
             case ERROR -> {
                 engineStatusBadge.getStyleClass().add("badge-stopping");
@@ -455,7 +722,7 @@ public class MainController {
                 stopButton.setDisable(true);
                 repeatCountField.setDisable(false);
                 backgroundClickCheckBox.setDisable(false);
-                loopCounterLabel.setText("Engine Error");
+                loopCounterLabel.setText(I18n.get("status.error"));
             }
         }
     }
@@ -481,7 +748,9 @@ public class MainController {
         automationEngine.stop();
     }
 
+    // =========================================================================
     // 1. Initial Actions Handlers
+    // =========================================================================
     @FXML
     private void handleAddActionInitial() {
         new ActionDialog(null, screenComboBox.getValue(), getActiveWindowBounds()).showAndWait().ifPresent(initialActions::add);
@@ -489,14 +758,7 @@ public class MainController {
 
     @FXML
     private void handleAddCheckImageInitial() {
-        AutomationAction sampleCheck = new AutomationAction();
-        sampleCheck.setType(AutomationActionType.CHECK_IMAGE);
-        sampleCheck.setCoordinateMode(CoordinateMode.WINDOW_RELATIVE);
-        sampleCheck.setX(100);
-        sampleCheck.setY(100);
-        sampleCheck.setWidth(300);
-        sampleCheck.setHeight(200);
-        sampleCheck.setThreshold(0.90);
+        AutomationAction sampleCheck = createDefaultCheckImage();
         new ActionDialog(sampleCheck, screenComboBox.getValue(), getActiveWindowBounds()).showAndWait().ifPresent(initialActions::add);
     }
 
@@ -543,10 +805,22 @@ public class MainController {
         }
     }
 
+    // =========================================================================
     // 2. Branch A Handlers
+    // =========================================================================
     @FXML
     private void handleAddActionBranchA() {
         new ActionDialog(null, screenComboBox.getValue(), getActiveWindowBounds()).showAndWait().ifPresent(branchAActions::add);
+    }
+
+    @FXML
+    private void handleAddCheckImageBranchA() {
+        AutomationAction sampleCheck = createDefaultCheckImage();
+        new ActionDialog(sampleCheck, screenComboBox.getValue(), getActiveWindowBounds()).showAndWait().ifPresent(action -> {
+            branchAActions.add(action);
+            updateDynamicBranchTabs();
+            branchTabPane.getSelectionModel().select(branchCTab);
+        });
     }
 
     @FXML
@@ -562,7 +836,10 @@ public class MainController {
         int idx = branchAListView.getSelectionModel().getSelectedIndex();
         if (idx >= 0) {
             new ActionDialog(branchAActions.get(idx), screenComboBox.getValue(), getActiveWindowBounds())
-                    .showAndWait().ifPresent(action -> branchAActions.set(idx, action));
+                    .showAndWait().ifPresent(action -> {
+                        branchAActions.set(idx, action);
+                        updateDynamicBranchTabs();
+                    });
         }
     }
 
@@ -571,6 +848,7 @@ public class MainController {
         int idx = branchAListView.getSelectionModel().getSelectedIndex();
         if (idx >= 0) {
             branchAActions.remove(idx);
+            updateDynamicBranchTabs();
         }
     }
 
@@ -592,10 +870,124 @@ public class MainController {
         }
     }
 
-    // 3. Branch B Handlers
+    // =========================================================================
+    // 3. Branch C Handlers (A: MATCH)
+    // =========================================================================
+    @FXML
+    private void handleAddActionBranchC() {
+        new ActionDialog(null, screenComboBox.getValue(), getActiveWindowBounds()).showAndWait().ifPresent(branchCActions::add);
+    }
+
+    @FXML
+    private void handlePickCoordBranchC() {
+        CoordinatePickerOverlay.pick(screenComboBox.getValue(), getActiveWindowBounds(), CoordinateMode.WINDOW_RELATIVE, pt -> {
+            AutomationAction action = new AutomationAction(AutomationActionType.CLICK, pt.x, pt.y, 300, CoordinateMode.WINDOW_RELATIVE);
+            branchCActions.add(action);
+        });
+    }
+
+    @FXML
+    private void handleEditActionBranchC() {
+        int idx = branchCListView.getSelectionModel().getSelectedIndex();
+        if (idx >= 0) {
+            new ActionDialog(branchCActions.get(idx), screenComboBox.getValue(), getActiveWindowBounds())
+                    .showAndWait().ifPresent(action -> branchCActions.set(idx, action));
+        }
+    }
+
+    @FXML
+    private void handleDeleteActionBranchC() {
+        int idx = branchCListView.getSelectionModel().getSelectedIndex();
+        if (idx >= 0) {
+            branchCActions.remove(idx);
+        }
+    }
+
+    @FXML
+    private void handleMoveUpBranchC() {
+        int idx = branchCListView.getSelectionModel().getSelectedIndex();
+        if (idx > 0) {
+            Collections.swap(branchCActions, idx, idx - 1);
+            branchCListView.getSelectionModel().select(idx - 1);
+        }
+    }
+
+    @FXML
+    private void handleMoveDownBranchC() {
+        int idx = branchCListView.getSelectionModel().getSelectedIndex();
+        if (idx >= 0 && idx < branchCActions.size() - 1) {
+            Collections.swap(branchCActions, idx, idx + 1);
+            branchCListView.getSelectionModel().select(idx + 1);
+        }
+    }
+
+    // =========================================================================
+    // 4. Branch D Handlers (A: NOT MATCH)
+    // =========================================================================
+    @FXML
+    private void handleAddActionBranchD() {
+        new ActionDialog(null, screenComboBox.getValue(), getActiveWindowBounds()).showAndWait().ifPresent(branchDActions::add);
+    }
+
+    @FXML
+    private void handlePickCoordBranchD() {
+        CoordinatePickerOverlay.pick(screenComboBox.getValue(), getActiveWindowBounds(), CoordinateMode.WINDOW_RELATIVE, pt -> {
+            AutomationAction action = new AutomationAction(AutomationActionType.CLICK, pt.x, pt.y, 300, CoordinateMode.WINDOW_RELATIVE);
+            branchDActions.add(action);
+        });
+    }
+
+    @FXML
+    private void handleEditActionBranchD() {
+        int idx = branchDListView.getSelectionModel().getSelectedIndex();
+        if (idx >= 0) {
+            new ActionDialog(branchDActions.get(idx), screenComboBox.getValue(), getActiveWindowBounds())
+                    .showAndWait().ifPresent(action -> branchDActions.set(idx, action));
+        }
+    }
+
+    @FXML
+    private void handleDeleteActionBranchD() {
+        int idx = branchDListView.getSelectionModel().getSelectedIndex();
+        if (idx >= 0) {
+            branchDActions.remove(idx);
+        }
+    }
+
+    @FXML
+    private void handleMoveUpBranchD() {
+        int idx = branchDListView.getSelectionModel().getSelectedIndex();
+        if (idx > 0) {
+            Collections.swap(branchDActions, idx, idx - 1);
+            branchDListView.getSelectionModel().select(idx - 1);
+        }
+    }
+
+    @FXML
+    private void handleMoveDownBranchD() {
+        int idx = branchDListView.getSelectionModel().getSelectedIndex();
+        if (idx >= 0 && idx < branchDActions.size() - 1) {
+            Collections.swap(branchDActions, idx, idx + 1);
+            branchDListView.getSelectionModel().select(idx + 1);
+        }
+    }
+
+    // =========================================================================
+    // 5. Branch B Handlers
+    // =========================================================================
     @FXML
     private void handleAddActionBranchB() {
         new ActionDialog(null, screenComboBox.getValue(), getActiveWindowBounds()).showAndWait().ifPresent(branchBActions::add);
+    }
+
+    @FXML
+    private void handleAddCheckImageBranchB() {
+        AutomationAction sampleCheck = createDefaultCheckImage();
+        new ActionDialog(sampleCheck, screenComboBox.getValue(), getActiveWindowBounds()).showAndWait().ifPresent(action -> {
+            branchBActions.add(action);
+            updateDynamicBranchTabs();
+            branchTabPane.getSelectionModel().select(branchETab);
+        });
     }
 
     @FXML
@@ -611,7 +1003,10 @@ public class MainController {
         int idx = branchBListView.getSelectionModel().getSelectedIndex();
         if (idx >= 0) {
             new ActionDialog(branchBActions.get(idx), screenComboBox.getValue(), getActiveWindowBounds())
-                    .showAndWait().ifPresent(action -> branchBActions.set(idx, action));
+                    .showAndWait().ifPresent(action -> {
+                        branchBActions.set(idx, action);
+                        updateDynamicBranchTabs();
+                    });
         }
     }
 
@@ -620,6 +1015,7 @@ public class MainController {
         int idx = branchBListView.getSelectionModel().getSelectedIndex();
         if (idx >= 0) {
             branchBActions.remove(idx);
+            updateDynamicBranchTabs();
         }
     }
 
@@ -639,6 +1035,120 @@ public class MainController {
             Collections.swap(branchBActions, idx, idx + 1);
             branchBListView.getSelectionModel().select(idx + 1);
         }
+    }
+
+    // =========================================================================
+    // 6. Branch E Handlers (B: MATCH)
+    // =========================================================================
+    @FXML
+    private void handleAddActionBranchE() {
+        new ActionDialog(null, screenComboBox.getValue(), getActiveWindowBounds()).showAndWait().ifPresent(branchEActions::add);
+    }
+
+    @FXML
+    private void handlePickCoordBranchE() {
+        CoordinatePickerOverlay.pick(screenComboBox.getValue(), getActiveWindowBounds(), CoordinateMode.WINDOW_RELATIVE, pt -> {
+            AutomationAction action = new AutomationAction(AutomationActionType.CLICK, pt.x, pt.y, 300, CoordinateMode.WINDOW_RELATIVE);
+            branchEActions.add(action);
+        });
+    }
+
+    @FXML
+    private void handleEditActionBranchE() {
+        int idx = branchEListView.getSelectionModel().getSelectedIndex();
+        if (idx >= 0) {
+            new ActionDialog(branchEActions.get(idx), screenComboBox.getValue(), getActiveWindowBounds())
+                    .showAndWait().ifPresent(action -> branchEActions.set(idx, action));
+        }
+    }
+
+    @FXML
+    private void handleDeleteActionBranchE() {
+        int idx = branchEListView.getSelectionModel().getSelectedIndex();
+        if (idx >= 0) {
+            branchEActions.remove(idx);
+        }
+    }
+
+    @FXML
+    private void handleMoveUpBranchE() {
+        int idx = branchEListView.getSelectionModel().getSelectedIndex();
+        if (idx > 0) {
+            Collections.swap(branchEActions, idx, idx - 1);
+            branchEListView.getSelectionModel().select(idx - 1);
+        }
+    }
+
+    @FXML
+    private void handleMoveDownBranchE() {
+        int idx = branchEListView.getSelectionModel().getSelectedIndex();
+        if (idx >= 0 && idx < branchEActions.size() - 1) {
+            Collections.swap(branchEActions, idx, idx + 1);
+            branchEListView.getSelectionModel().select(idx + 1);
+        }
+    }
+
+    // =========================================================================
+    // 7. Branch F Handlers (B: NOT MATCH)
+    // =========================================================================
+    @FXML
+    private void handleAddActionBranchF() {
+        new ActionDialog(null, screenComboBox.getValue(), getActiveWindowBounds()).showAndWait().ifPresent(branchFActions::add);
+    }
+
+    @FXML
+    private void handlePickCoordBranchF() {
+        CoordinatePickerOverlay.pick(screenComboBox.getValue(), getActiveWindowBounds(), CoordinateMode.WINDOW_RELATIVE, pt -> {
+            AutomationAction action = new AutomationAction(AutomationActionType.CLICK, pt.x, pt.y, 300, CoordinateMode.WINDOW_RELATIVE);
+            branchFActions.add(action);
+        });
+    }
+
+    @FXML
+    private void handleEditActionBranchF() {
+        int idx = branchFListView.getSelectionModel().getSelectedIndex();
+        if (idx >= 0) {
+            new ActionDialog(branchFActions.get(idx), screenComboBox.getValue(), getActiveWindowBounds())
+                    .showAndWait().ifPresent(action -> branchFActions.set(idx, action));
+        }
+    }
+
+    @FXML
+    private void handleDeleteActionBranchF() {
+        int idx = branchFListView.getSelectionModel().getSelectedIndex();
+        if (idx >= 0) {
+            branchFActions.remove(idx);
+        }
+    }
+
+    @FXML
+    private void handleMoveUpBranchF() {
+        int idx = branchFListView.getSelectionModel().getSelectedIndex();
+        if (idx > 0) {
+            Collections.swap(branchFActions, idx, idx - 1);
+            branchFListView.getSelectionModel().select(idx - 1);
+        }
+    }
+
+    @FXML
+    private void handleMoveDownBranchF() {
+        int idx = branchFListView.getSelectionModel().getSelectedIndex();
+        if (idx >= 0 && idx < branchFActions.size() - 1) {
+            Collections.swap(branchFActions, idx, idx + 1);
+            branchFListView.getSelectionModel().select(idx + 1);
+        }
+    }
+
+    private AutomationAction createDefaultCheckImage() {
+        AutomationAction sampleCheck = new AutomationAction();
+        sampleCheck.setType(AutomationActionType.CHECK_IMAGE);
+        sampleCheck.setCoordinateMode(CoordinateMode.WINDOW_RELATIVE);
+        sampleCheck.setX(100);
+        sampleCheck.setY(100);
+        sampleCheck.setWidth(300);
+        sampleCheck.setHeight(200);
+        sampleCheck.setThreshold(0.90);
+        return sampleCheck;
     }
 
     @FXML
@@ -709,6 +1219,10 @@ public class MainController {
         config.setInitialActions(new ArrayList<>(initialActions));
         config.setBranchA(new ArrayList<>(branchAActions));
         config.setBranchB(new ArrayList<>(branchBActions));
+        config.setBranchC(new ArrayList<>(branchCActions));
+        config.setBranchD(new ArrayList<>(branchDActions));
+        config.setBranchE(new ArrayList<>(branchEActions));
+        config.setBranchF(new ArrayList<>(branchFActions));
         return config;
     }
 
@@ -734,6 +1248,13 @@ public class MainController {
         initialActions.setAll(config.getInitialActions() != null ? config.getInitialActions() : Collections.emptyList());
         branchAActions.setAll(config.getBranchA() != null ? config.getBranchA() : Collections.emptyList());
         branchBActions.setAll(config.getBranchB() != null ? config.getBranchB() : Collections.emptyList());
+        branchCActions.setAll(config.getBranchC() != null ? config.getBranchC() : Collections.emptyList());
+        branchDActions.setAll(config.getBranchD() != null ? config.getBranchD() : Collections.emptyList());
+        branchEActions.setAll(config.getBranchE() != null ? config.getBranchE() : Collections.emptyList());
+        branchFActions.setAll(config.getBranchF() != null ? config.getBranchF() : Collections.emptyList());
+
+        updateDynamicBranchTabs();
+        refreshAllListViews();
     }
 
     private void showAlert(String title, String message) {

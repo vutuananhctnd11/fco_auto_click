@@ -29,6 +29,10 @@ public class AutomationConfig {
     private List<AutomationAction> initialActions = new ArrayList<>();
     private List<AutomationAction> branchA = new ArrayList<>();
     private List<AutomationAction> branchB = new ArrayList<>();
+    private List<AutomationAction> branchC = new ArrayList<>();
+    private List<AutomationAction> branchD = new ArrayList<>();
+    private List<AutomationAction> branchE = new ArrayList<>();
+    private List<AutomationAction> branchF = new ArrayList<>();
 
     public AutomationConfig() {
     }
@@ -105,6 +109,38 @@ public class AutomationConfig {
         this.branchB = branchB != null ? branchB : new ArrayList<>();
     }
 
+    public List<AutomationAction> getBranchC() {
+        return branchC;
+    }
+
+    public void setBranchC(List<AutomationAction> branchC) {
+        this.branchC = branchC != null ? branchC : new ArrayList<>();
+    }
+
+    public List<AutomationAction> getBranchD() {
+        return branchD;
+    }
+
+    public void setBranchD(List<AutomationAction> branchD) {
+        this.branchD = branchD != null ? branchD : new ArrayList<>();
+    }
+
+    public List<AutomationAction> getBranchE() {
+        return branchE;
+    }
+
+    public void setBranchE(List<AutomationAction> branchE) {
+        this.branchE = branchE != null ? branchE : new ArrayList<>();
+    }
+
+    public List<AutomationAction> getBranchF() {
+        return branchF;
+    }
+
+    public void setBranchF(List<AutomationAction> branchF) {
+        this.branchF = branchF != null ? branchF : new ArrayList<>();
+    }
+
     public int getRepeatCount() {
         return repeatCount;
     }
@@ -122,10 +158,17 @@ public class AutomationConfig {
     }
 
     /**
-     * Checks if this configuration contains any CHECK_IMAGE action.
+     * Checks if this configuration contains any CHECK_IMAGE action across all branches.
      */
     public boolean hasCheckImageAction() {
-        for (AutomationAction a : initialActions) {
+        return hasCheckImageInList(initialActions)
+                || hasCheckImageInList(branchA)
+                || hasCheckImageInList(branchB);
+    }
+
+    private boolean hasCheckImageInList(List<AutomationAction> list) {
+        if (list == null) return false;
+        for (AutomationAction a : list) {
             if (a.getType() == AutomationActionType.CHECK_IMAGE) {
                 return true;
             }
@@ -143,26 +186,40 @@ public class AutomationConfig {
             return "Repeat count must be greater than or equal to 0 (0 = infinite).";
         }
 
-        if (initialActions.isEmpty() && branchA.isEmpty() && branchB.isEmpty()) {
+        if (initialActions.isEmpty() && branchA.isEmpty() && branchB.isEmpty()
+                && branchC.isEmpty() && branchD.isEmpty() && branchE.isEmpty() && branchF.isEmpty()) {
             return "Action list cannot be empty. Please add at least one action.";
         }
 
-        // Validate any CHECK_IMAGE actions
-        for (AutomationAction action : initialActions) {
+        // Validate CHECK_IMAGE actions in initial actions and level-1 branches
+        String err = validateCheckImages(initialActions, "Initial Actions");
+        if (err != null) return err;
+
+        err = validateCheckImages(branchA, "Branch A");
+        if (err != null) return err;
+
+        err = validateCheckImages(branchB, "Branch B");
+        if (err != null) return err;
+
+        return null;
+    }
+
+    private String validateCheckImages(List<AutomationAction> actions, String branchName) {
+        if (actions == null) return null;
+        for (AutomationAction action : actions) {
             if (action.getType() == AutomationActionType.CHECK_IMAGE) {
                 if (action.getTemplatePath() == null || action.getTemplatePath().isBlank()) {
-                    return "CHECK_IMAGE action is missing template image path.";
+                    return branchName + ": CHECK_IMAGE action is missing template image path.";
                 }
                 File tplFile = new File(action.getTemplatePath());
                 if (!tplFile.exists() || !tplFile.isFile()) {
-                    return "Template image file does not exist: " + action.getTemplatePath();
+                    return branchName + ": Template image file does not exist: " + action.getTemplatePath();
                 }
                 if (action.getWidth() <= 0 || action.getHeight() <= 0) {
-                    return "CHECK_IMAGE capture region dimensions must be greater than 0.";
+                    return branchName + ": CHECK_IMAGE capture region dimensions must be greater than 0.";
                 }
             }
         }
-
         return null;
     }
 }

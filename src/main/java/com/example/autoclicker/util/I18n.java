@@ -69,6 +69,10 @@ public final class I18n {
         }
     }
 
+    public static synchronized String get(String key, Object... args) {
+        return format(key, args);
+    }
+
     public static synchronized String format(String key, Object... args) {
         try {
             String pattern = bundle.getString(key);

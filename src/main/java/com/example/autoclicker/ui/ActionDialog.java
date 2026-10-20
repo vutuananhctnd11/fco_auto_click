@@ -10,6 +10,7 @@ import com.example.autoclicker.screen.CaptureRegion;
 import com.example.autoclicker.screen.ScreenInfo;
 import com.example.autoclicker.util.I18n;
 import com.example.autoclicker.util.LoggerUtil;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
@@ -20,33 +21,34 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.util.StringConverter;
 
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.text.MessageFormat;
 import java.util.Locale;
 
 /**
- * Modal dialog to add or edit an AutomationAction with i18n support.
- * Dynamically switches form fields between Mouse/Keyboard actions and CHECK_IMAGE action.
+ * Universal Action Configuration Dialog supporting CLICK, MOVE, SCROLL, KEY_PRESS, WAIT, and CHECK_IMAGE.
+ * Completely restyled with application-native Dark Theme and clean text without broken emoji icons.
+ * Developed by TunEngDev2003.
  */
 public class ActionDialog extends Dialog<AutomationAction> {
 
     private final ComboBox<AutomationActionType> typeCombo;
     private final ComboBox<CoordinateMode> modeCombo;
-
-    // Mouse fields
     private final TextField xField;
     private final TextField yField;
-    private final Button pickCoordBtn;
-
-    // Keyboard & General fields
-    private final TextField keyField;
-    private final TextField delayField;
-
-    // CHECK_IMAGE specific fields
     private final TextField widthField;
     private final TextField heightField;
+    private final TextField scrollField;
+    private final TextField keyField;
+    private final TextField delayField;
+    private final Button pickCoordBtn;
     private final Button pickRegionBtn;
     private final TextField templatePathField;
     private final Button browseTemplateBtn;
@@ -65,34 +67,101 @@ public class ActionDialog extends Dialog<AutomationAction> {
         initModality(Modality.APPLICATION_MODAL);
         DialogPane dialogPane = getDialogPane();
         dialogPane.getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-        dialogPane.setPrefWidth(520);
+        dialogPane.setPrefWidth(550);
+
+        // Apply Dark Theme Stylesheet and inline styling for cohesive aesthetics
+        if (getClass().getResource("/css/style.css") != null) {
+            dialogPane.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
+        }
+        dialogPane.setStyle("-fx-background-color: #141822; -fx-border-color: #272f40; -fx-border-width: 1.5px; -fx-border-radius: 8px; -fx-background-radius: 8px;");
+
+        // Set application icon on dialog stage
+        dialogPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null && newScene.getWindow() instanceof Stage stage) {
+                try (InputStream iconStream = getClass().getResourceAsStream("/icons/FCOAutoClick_logo.png")) {
+                    if (iconStream != null) {
+                        stage.getIcons().add(new Image(iconStream));
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+        });
 
         GridPane grid = new GridPane();
-        grid.setHgap(10);
+        grid.setHgap(12);
         grid.setVgap(10);
-        grid.setPadding(new Insets(14, 18, 14, 18));
+        grid.setPadding(new Insets(16, 20, 16, 20));
+        grid.setStyle("-fx-background-color: #141822;");
 
+        String textFieldStyle = "-fx-background-color: #1e2638; -fx-text-fill: #ffffff; -fx-border-color: #3b4860; -fx-border-radius: 4px; -fx-background-radius: 4px; -fx-padding: 6px 10px;";
+        String comboStyle = "-fx-background-color: #1e2638; -fx-border-color: #3b4860; -fx-border-radius: 4px; -fx-background-radius: 4px;";
+        String btnPrimaryStyle = "-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 4px; -fx-padding: 6px 14px; -fx-cursor: hand;";
+        String btnSecondaryStyle = "-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-font-weight: bold; -fx-background-radius: 4px; -fx-padding: 6px 14px; -fx-cursor: hand;";
+
+        // Type ComboBox with localized StringConverter (No emoji icons in text)
         typeCombo = new ComboBox<>(FXCollections.observableArrayList(AutomationActionType.values()));
+        typeCombo.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(AutomationActionType type) {
+                if (type == null) return "";
+                return I18n.get("action.type." + type.name().toLowerCase());
+            }
+
+            @Override
+            public AutomationActionType fromString(String string) {
+                return null;
+            }
+        });
         typeCombo.setValue(AutomationActionType.CLICK);
+        typeCombo.setPrefWidth(280);
+        typeCombo.setStyle(comboStyle);
+
+        // Coordinate Mode ComboBox with localized StringConverter
         modeCombo = new ComboBox<>(FXCollections.observableArrayList(CoordinateMode.values()));
+        modeCombo.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(CoordinateMode mode) {
+                if (mode == null) return "";
+                return I18n.get("coord.mode." + mode.name().toLowerCase());
+            }
+
+            @Override
+            public CoordinateMode fromString(String string) {
+                return null;
+            }
+        });
         modeCombo.setValue(CoordinateMode.WINDOW_RELATIVE);
+        modeCombo.setPrefWidth(280);
+        modeCombo.setStyle(comboStyle);
 
         xField = new TextField("0");
+        xField.setStyle(textFieldStyle);
         yField = new TextField("0");
+        yField.setStyle(textFieldStyle);
         widthField = new TextField("300");
+        widthField.setStyle(textFieldStyle);
         heightField = new TextField("200");
+        heightField.setStyle(textFieldStyle);
+        scrollField = new TextField("-1");
+        scrollField.setStyle(textFieldStyle);
         keyField = new TextField("ESC");
+        keyField.setStyle(textFieldStyle);
         delayField = new TextField("300");
+        delayField.setStyle(textFieldStyle);
 
         pickCoordBtn = new Button(I18n.get("dialog.action.pick_btn"));
-        pickCoordBtn.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
+        pickCoordBtn.setStyle(btnPrimaryStyle);
 
         pickRegionBtn = new Button(I18n.get("btn.pick_region"));
-        pickRegionBtn.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold;");
+        pickRegionBtn.setStyle(btnPrimaryStyle);
 
         templatePathField = new TextField("");
         templatePathField.setPromptText(I18n.get("prompt.template_path"));
+        templatePathField.setStyle(textFieldStyle);
+        templatePathField.setPrefWidth(240);
+
         browseTemplateBtn = new Button(I18n.get("btn.browse"));
+        browseTemplateBtn.setStyle(btnSecondaryStyle);
 
         templatePreviewView = new ImageView();
         templatePreviewView.setFitHeight(40);
@@ -105,6 +174,7 @@ public class ActionDialog extends Dialog<AutomationAction> {
         thresholdSlider.setBlockIncrement(0.05);
         thresholdField = new TextField("0.90");
         thresholdField.setPrefWidth(60);
+        thresholdField.setStyle(textFieldStyle);
 
         thresholdSlider.valueProperty().addListener((obs, oldVal, newVal) ->
                 thresholdField.setText(String.format(Locale.US, "%.2f", newVal.doubleValue())));
@@ -117,20 +187,21 @@ public class ActionDialog extends Dialog<AutomationAction> {
         });
 
         testImageBtn = new Button(I18n.get("btn.test_image"));
-        testImageBtn.setStyle("-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold;");
+        testImageBtn.setStyle("-fx-background-color: #059669; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 4px; -fx-padding: 6px 14px; -fx-cursor: hand;");
         testResultBadge = new Label(I18n.get("lbl.untested"));
         testResultBadge.setStyle("-fx-padding: 3px 8px; -fx-background-radius: 4px; -fx-background-color: #475569; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;");
-        testConfidenceLabel = new Label("Confidence: --");
+        testConfidenceLabel = new Label(MessageFormat.format(I18n.get("lbl.confidence"), "--"));
         testConfidenceLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #e2e8f0;");
 
         // Load existing values
         if (existingAction != null) {
-            typeCombo.setValue(existingAction.getType());
+            typeCombo.setValue(existingAction.getType() != null ? existingAction.getType() : AutomationActionType.CLICK);
             modeCombo.setValue(existingAction.getCoordinateMode() != null ? existingAction.getCoordinateMode() : CoordinateMode.WINDOW_RELATIVE);
             xField.setText(String.valueOf(existingAction.getX()));
             yField.setText(String.valueOf(existingAction.getY()));
             widthField.setText(String.valueOf(existingAction.getWidth() > 0 ? existingAction.getWidth() : 300));
             heightField.setText(String.valueOf(existingAction.getHeight() > 0 ? existingAction.getHeight() : 200));
+            scrollField.setText(String.valueOf(existingAction.getScrollAmount() != 0 ? existingAction.getScrollAmount() : -1));
             keyField.setText(existingAction.getKeyName() != null ? existingAction.getKeyName() : "");
             delayField.setText(String.valueOf(existingAction.getDelayMs()));
             templatePathField.setText(existingAction.getTemplatePath() != null ? existingAction.getTemplatePath() : "");
@@ -187,7 +258,8 @@ public class ActionDialog extends Dialog<AutomationAction> {
                 BufferedImage shot = ss.capture(screen, region, windowBounds);
                 MatchResult res = id.match(shot, tpl, thresholdSlider.getValue());
 
-                testConfidenceLabel.setText(String.format(Locale.US, "Confidence: %.2f", res.getConfidence()));
+                testConfidenceLabel.setText(MessageFormat.format(I18n.get("lbl.confidence"),
+                        String.format(Locale.US, "%.2f", res.getConfidence())));
                 if (res.isMatched()) {
                     testResultBadge.setText(I18n.get("lbl.match"));
                     testResultBadge.setStyle("-fx-padding: 3px 8px; -fx-background-radius: 4px; -fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px;");
@@ -201,16 +273,17 @@ public class ActionDialog extends Dialog<AutomationAction> {
         });
 
         // Layout construction
-        Label typeLbl = new Label(I18n.get("dialog.action.type"));
-        Label modeLbl = new Label(I18n.get("dialog.action.mode"));
-        Label xLbl = new Label(I18n.get("dialog.action.x"));
-        Label yLbl = new Label(I18n.get("dialog.action.y"));
-        Label wLbl = new Label("Width:");
-        Label hLbl = new Label("Height:");
-        Label keyLbl = new Label(I18n.get("dialog.action.key"));
-        Label delayLbl = new Label(I18n.get("dialog.action.delay"));
-        Label tplLbl = new Label(I18n.get("lbl.template_image"));
-        Label threshLbl = new Label(I18n.get("lbl.threshold"));
+        Label typeLbl = createStyledLabel(I18n.get("dialog.action.type"));
+        Label modeLbl = createStyledLabel(I18n.get("dialog.action.mode"));
+        Label xLbl = createStyledLabel(I18n.get("dialog.action.x"));
+        Label yLbl = createStyledLabel(I18n.get("dialog.action.y"));
+        Label wLbl = createStyledLabel(I18n.get("dialog.action.width"));
+        Label hLbl = createStyledLabel(I18n.get("dialog.action.height"));
+        Label scrollLbl = createStyledLabel(I18n.get("dialog.action.scroll_amount"));
+        Label keyLbl = createStyledLabel(I18n.get("dialog.action.key"));
+        Label delayLbl = createStyledLabel(I18n.get("dialog.action.delay"));
+        Label tplLbl = createStyledLabel(I18n.get("lbl.template_image"));
+        Label threshLbl = createStyledLabel(I18n.get("lbl.threshold"));
 
         grid.add(typeLbl, 0, 0);
         grid.add(typeCombo, 1, 0);
@@ -232,35 +305,42 @@ public class ActionDialog extends Dialog<AutomationAction> {
         HBox hBox = new HBox(8, heightField, pickRegionBtn);
         grid.add(hBox, 1, 5);
 
-        grid.add(tplLbl, 0, 6);
+        grid.add(scrollLbl, 0, 6);
+        Label scrollTipLbl = new Label(I18n.get("dialog.action.scroll_tip"));
+        scrollTipLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
+        VBox scrollBox = new VBox(4, scrollField, scrollTipLbl);
+        grid.add(scrollBox, 1, 6);
+
+        grid.add(tplLbl, 0, 7);
         VBox tplBox = new VBox(6,
                 new HBox(6, templatePathField, browseTemplateBtn),
                 new HBox(8, templatePreviewView, templateDimLabel));
-        grid.add(tplBox, 1, 6);
+        grid.add(tplBox, 1, 7);
 
-        grid.add(threshLbl, 0, 7);
+        grid.add(threshLbl, 0, 8);
         HBox threshBox = new HBox(8, thresholdSlider, thresholdField);
-        grid.add(threshBox, 1, 7);
+        grid.add(threshBox, 1, 8);
 
-        Label testLbl = new Label("Test Matching:");
+        Label testLbl = createStyledLabel(I18n.get("dialog.action.test_match"));
         HBox testBox = new HBox(8, testImageBtn, testResultBadge, testConfidenceLabel);
-        grid.add(testLbl, 0, 8);
-        grid.add(testBox, 1, 8);
+        grid.add(testLbl, 0, 9);
+        grid.add(testBox, 1, 9);
 
-        grid.add(keyLbl, 0, 9);
-        grid.add(keyField, 1, 9);
+        grid.add(keyLbl, 0, 10);
+        grid.add(keyField, 1, 10);
 
-        grid.add(delayLbl, 0, 10);
-        grid.add(delayField, 1, 10);
+        grid.add(delayLbl, 0, 11);
+        grid.add(delayField, 1, 11);
 
         Label tipLbl = new Label(I18n.get("dialog.action.key_tip"));
-        tipLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #888888;");
-        grid.add(tipLbl, 1, 11);
+        tipLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #94a3b8;");
+        grid.add(tipLbl, 1, 12);
 
         Runnable updateVisibility = () -> {
             AutomationActionType type = typeCombo.getValue();
             boolean isCheckImage = (type == AutomationActionType.CHECK_IMAGE);
             boolean isMouse = (type == AutomationActionType.CLICK || type == AutomationActionType.DOUBLE_CLICK || type == AutomationActionType.RIGHT_CLICK || type == AutomationActionType.MOVE || type == AutomationActionType.SCROLL);
+            boolean isScroll = (type == AutomationActionType.SCROLL);
             boolean isKey = (type == AutomationActionType.KEY_PRESS);
 
             modeCombo.setDisable(!isMouse && !isCheckImage);
@@ -278,6 +358,11 @@ public class ActionDialog extends Dialog<AutomationAction> {
             hLbl.setManaged(isCheckImage);
             hBox.setVisible(isCheckImage);
             hBox.setManaged(isCheckImage);
+
+            scrollLbl.setVisible(isScroll);
+            scrollLbl.setManaged(isScroll);
+            scrollBox.setVisible(isScroll);
+            scrollBox.setManaged(isScroll);
 
             tplLbl.setVisible(isCheckImage);
             tplLbl.setManaged(isCheckImage);
@@ -312,6 +397,18 @@ public class ActionDialog extends Dialog<AutomationAction> {
 
         dialogPane.setContent(grid);
 
+        // Customize Dialog Buttons styling for dark aesthetic
+        Platform.runLater(() -> {
+            Button okBtn = (Button) dialogPane.lookupButton(ButtonType.OK);
+            if (okBtn != null) {
+                okBtn.setStyle("-fx-background-color: #0284c7; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 6px 22px; -fx-background-radius: 5px; -fx-cursor: hand;");
+            }
+            Button cancelBtn = (Button) dialogPane.lookupButton(ButtonType.CANCEL);
+            if (cancelBtn != null) {
+                cancelBtn.setStyle("-fx-background-color: #334155; -fx-text-fill: #e2e8f0; -fx-font-weight: bold; -fx-padding: 6px 20px; -fx-background-radius: 5px; -fx-cursor: hand;");
+            }
+        });
+
         setResultConverter(buttonType -> {
             if (buttonType == ButtonType.OK) {
                 AutomationAction action = new AutomationAction();
@@ -344,6 +441,12 @@ public class ActionDialog extends Dialog<AutomationAction> {
                 } catch (Exception ignored) {
                 }
 
+                try {
+                    action.setScrollAmount(Integer.parseInt(scrollField.getText().trim()));
+                } catch (Exception ignored) {
+                    action.setScrollAmount(-1);
+                }
+
                 action.setKeyName(keyField.getText().trim());
 
                 try {
@@ -361,6 +464,12 @@ public class ActionDialog extends Dialog<AutomationAction> {
         });
     }
 
+    private Label createStyledLabel(String text) {
+        Label lbl = new Label(text);
+        lbl.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 12px; -fx-font-weight: bold;");
+        return lbl;
+    }
+
     private void updatePreview(String path) {
         if (path == null || path.isBlank()) {
             templatePreviewView.setImage(null);
@@ -368,22 +477,18 @@ public class ActionDialog extends Dialog<AutomationAction> {
             return;
         }
         File f = new File(path.trim());
-        if (f.exists() && f.isFile()) {
-            try {
-                Image img = new Image(f.toURI().toString());
-                templatePreviewView.setImage(img);
-                templateDimLabel.setText(String.format("%.0fx%.0f px", img.getWidth(), img.getHeight()));
-            } catch (Exception e) {
-                templatePreviewView.setImage(null);
-                templateDimLabel.setText("Error loading");
-            }
-        } else {
+        if (!f.exists() || !f.isFile()) {
             templatePreviewView.setImage(null);
             templateDimLabel.setText("File not found");
+            return;
         }
-    }
-
-    public ActionDialog(AutomationAction existingAction) {
-        this(existingAction, null, null);
+        try (FileInputStream in = new FileInputStream(f)) {
+            Image img = new Image(in);
+            templatePreviewView.setImage(img);
+            templateDimLabel.setText(String.format("%.0fx%.0f px", img.getWidth(), img.getHeight()));
+        } catch (Exception e) {
+            templatePreviewView.setImage(null);
+            templateDimLabel.setText("Invalid image");
+        }
     }
 }

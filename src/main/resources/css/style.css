@@ -263,3 +263,66 @@
 .menu-item:hover .label, .menu-item:focused .label {
     -fx-text-fill: #ffffff;
 }
+
+/* Dialog & Alert Dark Theme Matching Application UI */
+.dialog-pane {
+    -fx-background-color: #141822;
+    -fx-border-color: #272f40;
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-padding: 0;
+}
+
+.dialog-pane > .header-panel {
+    -fx-background-color: #0d111a;
+    -fx-padding: 12px 18px;
+    -fx-border-color: #1e2638;
+    -fx-border-width: 0 0 1px 0;
+}
+
+.dialog-pane > .header-panel .label {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #38bdf8;
+}
+
+.dialog-pane > .content {
+    -fx-background-color: #141822;
+    -fx-padding: 12px 16px;
+}
+
+.dialog-pane .label {
+    -fx-text-fill: #cbd5e1;
+    -fx-font-size: 12px;
+}
+
+.dialog-pane .button-bar {
+    -fx-background-color: #0d111a;
+    -fx-padding: 10px 18px;
+    -fx-border-color: #1e2638;
+    -fx-border-width: 1px 0 0 0;
+}
+
+.dialog-pane .button-bar .button {
+    -fx-background-color: #334155;
+    -fx-text-fill: #f8fafc;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+    -fx-padding: 6px 20px;
+    -fx-background-radius: 5px;
+    -fx-cursor: hand;
+}
+
+.dialog-pane .button-bar .button:default {
+    -fx-background-color: #0284c7;
+    -fx-text-fill: #ffffff;
+}
+
+.dialog-pane .button-bar .button:default:hover {
+    -fx-background-color: #0369a1;
+}
+
+.dialog-pane .button-bar .button:hover {
+    -fx-background-color: #475569;
+}

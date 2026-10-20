@@ -13,14 +13,17 @@ import javafx.stage.StageStyle;
 
 /**
  * Transparent floating target marker overlay displayed at the exact on-screen coordinates
- * of the currently selected action.
+ * of the currently selected action (crosshair only, no coordinate text).
  */
 public class ActionTargetMarkerOverlay {
 
     private static Stage markerStage;
-    private static Label infoLabel;
 
-    public static synchronized void show(int screenX, int screenY, String actionInfo) {
+    public static synchronized void show(int screenX, int screenY) {
+        show(screenX, screenY, null);
+    }
+
+    public static synchronized void show(int screenX, int screenY, String ignoredInfo) {
         Platform.runLater(() -> {
             try {
                 if (markerStage == null) {
@@ -31,7 +34,7 @@ public class ActionTargetMarkerOverlay {
                     // Outer pulse ring
                     Circle outerRing = new Circle(14);
                     outerRing.setFill(Color.TRANSPARENT);
-                    outerRing.setStroke(Color.web("#f43f5e", 0.8));
+                    outerRing.setStroke(Color.web("#f43f5e", 0.9));
                     outerRing.setStrokeWidth(2.5);
 
                     // Inner bright dot
@@ -39,28 +42,18 @@ public class ActionTargetMarkerOverlay {
                     innerDot.setFill(Color.web("#f43f5e"));
 
                     StackPane crosshair = new StackPane(outerRing, innerDot);
+                    crosshair.setStyle("-fx-background-color: transparent;");
 
-                    infoLabel = new Label();
-                    infoLabel.setStyle("-fx-text-fill: white; -fx-font-size: 11px; -fx-font-weight: bold; " +
-                            "-fx-background-color: rgba(15, 23, 42, 0.9); -fx-padding: 3px 8px; " +
-                            "-fx-background-radius: 4px; -fx-border-color: #f43f5e; -fx-border-radius: 4px;");
-
-                    VBox root = new VBox(4, crosshair, infoLabel);
-                    root.setAlignment(Pos.CENTER);
-                    root.setStyle("-fx-background-color: transparent;");
-
-                    Scene scene = new Scene(root);
+                    Scene scene = new Scene(crosshair, 32, 32);
                     scene.setFill(Color.TRANSPARENT);
                     markerStage.setScene(scene);
                 }
 
-                infoLabel.setText(actionInfo);
                 markerStage.show();
 
-                // Center the crosshair at screenX, screenY
-                // The crosshair circle center is at offset X: ~45px, Y: 14px
-                markerStage.setX(screenX - 45);
-                markerStage.setY(screenY - 14);
+                // Center the 32x32 crosshair exactly at screenX, screenY
+                markerStage.setX(screenX - 16);
+                markerStage.setY(screenY - 16);
 
             } catch (Exception ignored) {
             }
